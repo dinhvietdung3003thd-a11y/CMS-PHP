@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aroma Cafe - Trang chủ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/Dashboard.css">
+</head>
+<body>
+    <main class="page">
+        <div class="card">
+            <h1>Chào mừng đến Aroma Cafe</h1>
+            <p>Bạn đã đăng nhập thành công. Đây là trang chủ của ứng dụng, nơi bạn có thể thấy thông tin chung và điều hướng đến các chức năng khác.</p>
+
+            <div class="user-box">
+                <p><strong>Họ tên:</strong> <span id="userName">Loading...</span></p>
+                <p><strong>Vai trò:</strong> <span id="userRole">Loading...</span></p>
+            </div>
+
+            <div class="button-group">
+                <button id="logoutBtn" class="button">Đăng xuất</button>
+            </div>
+
+            <div class="info">
+                <p><strong>Lưu ý:</strong> Nếu bạn muốn vào trang chủ sau khi đăng nhập, chỉ cần giữ dòng chuyển hướng trong logic login như hiện tại.</p>
+            </div>
+        </div>
+    </main>
+
+    <script src="../assets/js/Config.js"></script>
+    <script src="../assets/js/Auth.js"></script>
+    <script src="../assets/js/Dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aroma Cafe - Đăng nhập</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/Login.css">
+</head>
+<body>
+    <div class="wrap" id="app">
+        <div class="left">
+            <div class="logo" aria-hidden="true">
+                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 18c0-3.3 2.7-6 6-6h28c6.6 0 12 5.4 12 12s-5.4 12-12 12H22c-5.5 0-10-4.5-10-10v-4z"/>
+                    <path d="M18 40c0 6.6 5.4 12 12 12s12-5.4 12-12H18z"/>
+                </svg>
+            </div>
+
+            <h2 class="title">SIGN IN</h2>
+
+            <div class="role-buttons">
+                <button type="button" id="roleEmployee" class="active">Employee</button>
+                <button type="button" id="roleAdmin">Admin</button>
+            </div>
+
+            <form id="loginForm" class="form">
+                <input type="hidden" id="loginType" value="staff">
+
+                <label class="field">
+                    <span class="icon">👤</span>
+                    <input type="text" id="username" placeholder="Username" required aria-label="Username">
+                </label>
+
+                <label class="field">
+                    <span class="icon">🔒</span>
+                    <input type="password" id="password" placeholder="Password" required aria-label="Password">
+                </label>
+
+                <div class="forgot-password" id="forgotPassword">Liên hệ Admin nếu bạn quên mật khẩu</div>
+
+                <button type="submit" class="signin-btn" id="btnLogin">
+                    <span id="btnText">SIGN IN</span>
+                </button>
+            </form>
+
+            <div id="errorMessage" class="error-box hidden"></div>
+
+            <div class="small-lock">&copy; Aroma Cafe</div>
+        </div>
+
+        <div class="right" aria-hidden="true">
+            <div class="overlay">
+                <p>Welcome to</p>
+                <div class="slogan">Aroma Cafe</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/Config.js"></script>
+    <script src="../assets/js/Auth.js"></script>
+    <script src="../assets/js/Login.js"></script>
+</body>
+</html>
