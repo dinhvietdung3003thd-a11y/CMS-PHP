@@ -30,7 +30,7 @@ function loadUserProfile() {
     if (profileRole) profileRole.textContent = role || "user";
 
     window.currentUser = {
-        fullName,
+        llName,
         role,
         username,
         email,
@@ -153,39 +153,75 @@ async function saveAccountInfo() {
 }
 
 async function changePassword() {
-    clearAccountErrors();
+  clearAccountErrors();
 
-    const currentPassword = document.getElementById("accountCurrentPassword")?.value || "";
-    const newPassword = document.getElementById("accountNewPassword")?.value || "";
-    const confirmPassword = document.getElementById("accountConfirmPassword")?.value || "";
+  const currentPassword = document.getElementById("accountCurrentPassword")?.value || "";
+  const newPassword = document.getElementById("accountNewPassword")?.value || "";
+  const confirmPassword = document.getElementById("accountConfirmPassword")?.value || "";
 
-    let hasError = false;
+  let hasError = false;
 
-    if (!currentPassword) {
-        showFieldError("accountCurrentPasswordError", "Vui lòng nhập mật khẩu hiện tại");
-        hasError = true;
+  if (!currentPassword) {
+    showFieldError("accountCurrentPasswordError", "Vui lòng nhập mật khẩu hiện tại");
+    hasError = true;
+  }
+
+  if (!newPassword) {
+    showFieldError("accountNewPasswordError", "Vui lòng nhập mật khẩu mới");
+    hasError = true;
+  }
+
+  if (newPassword && newPassword.length < 6) {
+    showFieldError("accountNewPasswordError", "Mật khẩu mới phải có ít nhất 6 ký tự");
+    hasError = true;
+  }
+
+  if (newPassword !== confirmPassword) {
+    showFieldError("accountConfirmPasswordError", "Mật khẩu xác nhận không khớp");
+    hasError = true;
+  }
+
+  if (hasError) return;
+
+  try {
+    const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/Auth/change-password`, {
+      method: "PUT",
+      headers: Auth.buildHeaders(),
+      body: JSON.stringify({
+        CurrentPassword: currentPassword,
+        NewPassword: newPassword,
+        ConfirmPassword: confirmPassword
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      showToast(data.message || "Đổi mật khẩu thất bại", "error");
+      return;
     }
 
-    if (!newPassword) {
-        showFieldError("accountNewPasswordError", "Vui lòng nhập mật khẩu mới");
-        hasError = true;
-    }
+    const newToken = data.token || data.Token;
 
-    if (newPassword && newPassword.length < 6) {
-        showFieldError("accountNewPasswordError", "Mật khẩu mới phải có ít nhất 6 ký tự");
-        hasError = true;
-    }
+    if (newToken) {
+      localStorage.setItem("token", newToken);
 
-    if (newPassword !== confirmPassword) {
-        showFieldError("accountConfirmPasswordError", "Mật khẩu xác nhận không khớp");
-        hasError = true;
+      const userJson = localStorage.getItem("user");
+      if (userJson) {
+        const user = JSON.parse(userJson);
+        user.token = newToken;
+        user.Token = newToken;
+        localStorage.setItem("user", JSON.stringify(user));
+      }
     }
-
-    if (hasError) return;
 
     document.getElementById("accountCurrentPassword").value = "";
     document.getElementById("accountNewPassword").value = "";
     document.getElementById("accountConfirmPassword").value = "";
 
-    showToast("Đổi mật khẩu thành công! (demo FE)", "success");
+    showToast(data.message || "Đổi mật khẩu thành công!", "success");
+  } catch (error) {
+    console.error("Change password error:", error);
+    showToast("Không thể kết nối tới server", "error");
+  }
 }
