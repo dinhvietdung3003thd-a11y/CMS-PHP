@@ -70,6 +70,7 @@ loginForm.onsubmit = async (e) => {
             localStorage.setItem("user", JSON.stringify(result));
 
             const role =
+                result.role ||
                 result.user?.Role ||
                 result.user?.role ||
                 result.User?.Role ||
@@ -77,11 +78,16 @@ loginForm.onsubmit = async (e) => {
                 "Staff";
 
             const fullName =
+                result.fullName ||
                 result.user?.FullName ||
                 result.user?.fullName ||
                 result.User?.FullName ||
                 result.User?.fullName ||
                 "User";
+
+            if (!result.user) {
+                result.user = { userId: result.userId, fullName, role };
+            }
 
             alert(`Đăng nhập thành công! Chào ${fullName} (Role: ${role})`);
 

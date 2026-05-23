@@ -119,81 +119,7 @@ function clearAccountErrors() {
 }
 
 async function saveAccountInfo() {
-    try {
-
-        const fullName =
-            document.getElementById("accountFullName")?.value.trim() || "";
-
-        const email =
-            document.getElementById("accountEmail")?.value.trim() || "";
-
-        const phoneNumber =
-            document.getElementById("accountPhone")?.value.trim() || "";
-
-        const avatarUrl =
-            document.getElementById("accountAvatar")?.value.trim() || "";
-
-        const authData =
-            JSON.parse(localStorage.getItem("user") || "{}");
-
-        if (!authData?.token) {
-            throw new Error("No token found");
-        }
-
-        const response = await fetch(
-            "http://localhost:5035/api/Auth/me",
-            {
-                method: "PUT",
-
-                headers: {
-                    "Authorization": `Bearer ${authData.token}`,
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    fullName,
-                    email,
-                    phoneNumber,
-                    avatarUrl
-                })
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error("Failed to update profile");
-        }
-
-        const updatedProfile = await response.json();
-
-        console.log("Updated profile:", updatedProfile);
-
-        // update localStorage
-        authData.user.fullName = updatedProfile.fullName;
-        authData.user.phoneNumber = updatedProfile.phoneNumber;
-        authData.user.email = updatedProfile.email;
-        authData.user.avatarUrl = updatedProfile.avatarUrl;
-
-        localStorage.setItem(
-            "user",
-            JSON.stringify(authData)
-        );
-
-        showToast(
-            "Cập nhật thông tin thành công.",
-            "success"
-        );
-
-        closeAccountModal();
-
-    } catch (error) {
-
-        console.error("Update profile error:", error);
-
-        showToast(
-            "Không thể cập nhật thông tin.",
-            "error"
-        );
-    }
+    showToast("Backend hiện chỉ hỗ trợ GET /Auth/me. Chức năng cập nhật hồ sơ đang tạm tắt.", "warning");
 }
 
 function updateProfileInfo() {
@@ -232,8 +158,8 @@ async function changePassword() {
     if (hasError) return;
 
     try {
-        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/Auth/change-password`, {
-            method: "PUT",
+        const response = await apiFetch(`/Auth/change-password`, {
+            method: "POST",
             headers: Auth.buildHeaders(),
             body: JSON.stringify({
                 CurrentPassword: currentPassword,

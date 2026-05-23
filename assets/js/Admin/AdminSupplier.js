@@ -23,8 +23,8 @@ async function loadSuppliersPage(showToastOnSuccess = true) {
 
     try {
         const [suppliersResponse, categoriesResponse] = await Promise.all([
-            apiFetch("/supplier"),
-            apiFetch("/categories")
+            apiFetch("/Supplier"),
+            apiFetch("/Categories")
         ]);
 
         if (!suppliersResponse.ok || !categoriesResponse.ok) {
@@ -237,7 +237,7 @@ async function saveSupplier() {
 
     try {
         const isEdit = !!currentSupplierEditId;
-        const path = isEdit ? `/supplier/${currentSupplierEditId}` : "/supplier";
+        const path = isEdit ? `/Supplier/${currentSupplierEditId}` : "/Supplier";
         const method = isEdit ? "PUT" : "POST";
 
         const response = await apiFetch(path, {

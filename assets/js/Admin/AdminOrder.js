@@ -9,7 +9,7 @@ async function loadOrders(showToastOnSuccess = true) {
     container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...</div>';
 
     try {
-        const response = await apiFetch("/orders");
+        const response = await apiFetch("/Orders");
         if (!response.ok) throw new Error("Không tải được danh sách đơn hàng.");
 
         const data = await response.json();
@@ -169,7 +169,23 @@ async function deleteSelectedOrders() {
         return;
     }
 
-    showToast("Chức năng xóa nhiều đơn đang để demo FE.", "success");
+        const confirmed = confirm(`Bạn có chắc muốn xóa ${selectedOrders.length} đơn hàng đã chọn?`);
+    if (!confirmed) return;
+    try {
+        for (const id of selectedOrders) {
+            const response = await apiFetch(`/Orders/${id}`, { method: "DELETE" });
+            if (!response.ok) {
+                const errorData = await parseJsonSafe(response);
+                throw new Error(errorData?.message || `Xóa đơn hàng ${id} thất bại`);
+            }
+        }
+        selectedOrders = [];
+        await loadOrders(false);
+        showToast("Đã xóa các đơn hàng đã chọn", "success");
+    } catch (error) {
+        console.error("Delete selected orders error:", error);
+        showToast(error.message || "Không thể xóa đơn hàng", "error");
+    }
 }
 
 function openFilterModal() {
@@ -181,7 +197,7 @@ function openSearchModal() {
 }
 
 function openCreateOrderModal() {
-    showToast("Create order modal sẽ nối ở file inventory / orders nâng cao.", "success");
+    showToast("UI tạo đơn hiện chưa được thiết kế API payload chi tiết; sẽ giữ nguyên ở phase UI tiếp theo.", "warning");
 }
 
 function loadSales() {

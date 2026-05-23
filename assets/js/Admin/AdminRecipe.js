@@ -172,13 +172,15 @@ async function loadRecipeDetail(productId) {
     if (!editor) return;
 
     try {
-        const response = await apiFetch(`/Recipe/product/${productId}`);
+        const response = await apiFetch(`/Recipe`);
 
         if (!response.ok) {
             throw new Error("Cannot load recipe detail");
         }
 
-        currentRecipeRows = await response.json();
+        const rows = await response.json();
+        const list = Array.isArray(rows) ? rows : (rows.data || []);
+        currentRecipeRows = list.filter(row => String(row.productId) === String(productId));
         renderRecipeEditor();
     } catch (error) {
         console.error("Load recipe detail error:", error);
