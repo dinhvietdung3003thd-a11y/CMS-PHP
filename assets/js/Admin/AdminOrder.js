@@ -88,11 +88,11 @@ function renderOrdersTable(orders) {
                         <td>
                             <input
                                 type="checkbox"
-                                value="${order.id ?? order.orderId ?? ""}"
+                                value="${order.orderId ?? order.id ?? ""}"
                                 onchange="toggleOrderSelection(this)"
                             >
                         </td>
-                        <td>${order.id ?? order.orderId ?? "-"}</td>
+                        <td>${order.orderId ?? order.id ?? "-"}</td>
                         <td>${order.customerName ?? order.fullName ?? "-"}</td>
                         <td>${order.tableName ?? order.tableNumber ?? "-"}</td>
                         <td>${order.status ?? "-"}</td>
@@ -135,14 +135,27 @@ function toggleSelectAllOrders(source) {
 }
 
 function viewOrder(order) {
-    alert(
-        `Order ID: ${order.id ?? order.orderId ?? "-"}\n` +
-        `Khách hàng: ${order.customerName ?? order.fullName ?? "-"}\n` +
-        `Bàn: ${order.tableName ?? order.tableNumber ?? "-"}\n` +
-        `Trạng thái: ${order.status ?? "-"}\n` +
-        `Tổng tiền: ${formatCurrency(order.totalAmount ?? order.total ?? 0)}`
-    );
+    const orderId = order.orderId ?? order.id;
+    if (!orderId) {
+        showToast("Không tìm thấy mã đơn hàng hợp lệ.", "error");
+        return;
+    }
+    window.openOrderDetails(orderId);
 }
+
+window.openOrderDetails = async function (orderId) {
+    if (!orderId) return showToast("Order ID không hợp lệ", "error");
+    const response = await apiFetch(`/Orders/${orderId}`);
+    if (!response.ok) return showToast("Không tải được chi tiết đơn hàng", "error");
+    const order = await response.json();
+    alert(
+        `Order ID: ${order.orderId ?? "-"}\n` +
+        `Khách hàng: ${order.customerName ?? "-"}\n` +
+        `Bàn: ${order.tableName ?? "-"}\n` +
+        `Trạng thái: ${order.status ?? "-"}\n` +
+        `Tổng tiền: ${formatCurrency(order.totalAmount ?? 0)}`
+    );
+};
 
 function exportToCSV() {
     if (!allOrders.length) {
@@ -173,6 +186,7 @@ async function deleteSelectedOrders() {
     if (!confirmed) return;
     try {
         for (const id of selectedOrders) {
+            if (!id) continue;
             const response = await apiFetch(`/Orders/${id}`, { method: "DELETE" });
             if (!response.ok) {
                 const errorData = await parseJsonSafe(response);
@@ -197,7 +211,7 @@ function openSearchModal() {
 }
 
 function openCreateOrderModal() {
-    showToast("UI tạo đơn hiện chưa được thiết kế API payload chi tiết; sẽ giữ nguyên ở phase UI tiếp theo.", "warning");
+    showToast("Tạo đơn đang tạm khóa: UI hiện chưa có input details (productId, quantity) theo API /Orders.", "warning");
 }
 
 function loadSales() {

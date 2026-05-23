@@ -74,7 +74,6 @@ function renderProductsTable(products) {
 }
 
 async function addProduct() {
-    const productId = document.getElementById("productIdInput")?.value.trim() || "";
     const productName = document.getElementById("productNameInput")?.value.trim() || "";
     const productPrice = document.getElementById("productPriceInput")?.value || "";
     const categoryId = document.getElementById("productTypeInput")?.value || "";
@@ -85,10 +84,12 @@ async function addProduct() {
     }
 
     const payload = {
-        productId: productId || undefined,
         name: productName,
         price: Number(productPrice),
-        categoryId: Number(categoryId)
+        categoryId: Number(categoryId),
+        description: "",
+        imageUrl: "",
+        isAvailable: true
     };
 
     try {

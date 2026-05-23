@@ -66,9 +66,6 @@ loginForm.onsubmit = async (e) => {
         if (response.ok) {
             const result = await response.json();
 
-            localStorage.setItem("token", result.token);
-            localStorage.setItem("user", JSON.stringify(result));
-
             const role =
                 result.role ||
                 result.user?.Role ||
@@ -85,9 +82,8 @@ loginForm.onsubmit = async (e) => {
                 result.User?.fullName ||
                 "User";
 
-            if (!result.user) {
-                result.user = { userId: result.userId, fullName, role };
-            }
+            const normalized = { ...result, user: { userId: result.userId, fullName, role } };
+            window.Auth.saveAuth(normalized);
 
             alert(`Đăng nhập thành công! Chào ${fullName} (Role: ${role})`);
 

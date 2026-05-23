@@ -49,8 +49,8 @@ async function loadInventoryPage(showToastOnSuccess = true) {
 }
 
 function normalizeInventoryStatus(item) {
-    const quantity = Number(item.quantity ?? item.stockQuantity ?? item.currentStock ?? 0);
-    const minStock = Number(item.minStock ?? item.minimumStock ?? 10);
+    const quantity = Number(item.quantityInStock ?? 0);
+    const minStock = Number(item.minThreshold ?? 0);
 
     if (quantity <= 0) return "out";
     if (quantity <= minStock) return "low";
@@ -114,11 +114,11 @@ function renderInventoryTable(data) {
                 </thead>
                 <tbody>
                     ${data.map(item => {
-                        const id = item.inventoryId ?? item.id ?? "-";
+                        const id = item.inventoryId ?? "-";
                         const name = item.name ?? item.inventoryName ?? "-";
-                        const quantity = Number(item.quantity ?? item.stockQuantity ?? item.currentStock ?? 0);
+                        const quantity = Number(item.quantityInStock ?? 0);
                         const unit = item.unit ?? item.unitName ?? "-";
-                        const minStock = Number(item.minStock ?? item.minimumStock ?? 10);
+                        const minStock = Number(item.minThreshold ?? 0);
                         const status = normalizeInventoryStatus(item);
 
                         return `
@@ -185,7 +185,7 @@ function loadInventoryReport() {
                                 ${[...outOfStockItems, ...lowStockItems].map(item => `
                                     <li>
                                         ${item.name ?? item.inventoryName ?? "-"} -
-                                        SL: ${item.quantity ?? item.stockQuantity ?? item.currentStock ?? 0}
+                                        SL: ${item.quantityInStock ?? 0}
                                     </li>
                                 `).join("")}
                             </ul>
@@ -219,7 +219,7 @@ function openInventoryTransactionModal(type) {
         select.innerHTML = `
             <option value="">Chọn nguyên liệu</option>
             ${inventoryData.map(item => `
-                <option value="${item.inventoryId ?? item.id ?? ""}">
+                <option value="${item.inventoryId ?? ""}">
                     ${item.name ?? item.inventoryName ?? "-"}
                 </option>
             `).join("")}
@@ -244,16 +244,14 @@ async function saveInventoryTransaction() {
         return;
     }
 
-    const matchedItem = inventoryData.find(item =>
-        String(item.inventoryId ?? item.id) === String(itemId)
-    );
+    const matchedItem = inventoryData.find(item => String(item.inventoryId) === String(itemId));
 
     if (!matchedItem) {
         showToast("Không tìm thấy nguyên liệu", "error");
         return;
     }
 
-    const currentQty = Number(matchedItem.quantity ?? matchedItem.stockQuantity ?? matchedItem.currentStock ?? 0);
+    const currentQty = Number(matchedItem.quantityInStock ?? 0);
     const newQty = type === "Import" ? currentQty + quantity : currentQty - quantity;
 
     if (type === "Export" && newQty < 0) {
@@ -265,6 +263,7 @@ async function saveInventoryTransaction() {
         inventoryId: Number(itemId),
         transactionType: type,
         quantity,
+        price: Number(document.getElementById("inventoryTransactionPrice")?.value || 0),
         note
     };
 

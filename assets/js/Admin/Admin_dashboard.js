@@ -163,10 +163,23 @@ async function apiFetch(path, options = {}) {
         headers: window.Auth.buildHeaders(options.headers || {})
     });
 
-    if (response.status === 401 || response.status === 403) {
-        showToast("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", "error");
+    if (response.status === 401) {
+        showToast("Unauthorized (401). Vui lòng đăng nhập lại.", "error");
         setTimeout(() => window.Auth.logout(), 1200);
         throw new Error("Unauthorized");
+    }
+
+    if (response.status === 403) {
+        showToast("Forbidden (403). Bạn không có quyền thực hiện thao tác này.", "error");
+        throw new Error("Forbidden");
+    }
+
+    if (response.status === 422) {
+        const data = await parseJsonSafe(response);
+        const errorText = data?.errors
+            ? Object.values(data.errors).flat().join(" | ")
+            : (data?.message || "Validation failed (422)");
+        showToast(errorText, "error");
     }
 
     return response;
@@ -296,23 +309,18 @@ async function loadDashboardData() {
 }
 
 function updateDashboardCards(orders, inventory, tables) {
-    const today = new Date().toDateString();
-
-    const todayOrders = orders.filter(order => {
-        return new Date(order.orderDate).toDateString() === today;
-    });
-
-    const todayRevenue = todayOrders.reduce((sum, order) => {
-        return sum + Number(order.totalAmount || 0);
-    }, 0);
-
-    const lowStockCount = inventory.filter(item => item.isLowStock === true).length;
-
-    const occupiedTables = tables.filter(table => {
-        return table.status?.toLowerCase() === "occupied";
+    const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+    const lowStockCount = inventory.filter(item => {
+        const qty = Number(item.quantityInStock || 0);
+        const min = Number(item.minThreshold || 0);
+        return qty > 0 && qty <= min;
     }).length;
 
-    document.getElementById("dashKpiRevenue").textContent = formatCurrency(todayRevenue);
+    const occupiedTables = tables.filter(table => {
+        return table.status === "Occupied";
+    }).length;
+
+    document.getElementById("dashKpiRevenue").textContent = formatCurrency(totalRevenue);
     document.getElementById("dashKpiOrders").textContent = orders.length;
     document.getElementById("dashKpiLowStock").textContent = lowStockCount;
     document.getElementById("dashKpiTables").textContent = occupiedTables;
