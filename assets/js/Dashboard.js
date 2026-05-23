@@ -1,3 +1,6 @@
+// Dashboard page script
+// - Hiển thị thông tin người dùng đăng nhập
+// - Cung cấp nút đăng xuất để chuyển về trang đăng nhập
 document.addEventListener("DOMContentLoaded", () => {
     if (!window.Auth.requireLogin()) return;
 

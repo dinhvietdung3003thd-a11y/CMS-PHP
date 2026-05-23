@@ -1,3 +1,7 @@
+// Admin profile/account management logic
+// - Hiển thị thông tin người dùng và avatar
+// - Xử lý sửa thông tin tài khoản và thay đổi mật khẩu
+// - Đọc dữ liệu user từ localStorage để dùng toàn cục
 function loadUserProfile() {
     const userJson = localStorage.getItem("user");
     if (!userJson) {
@@ -30,7 +34,7 @@ function loadUserProfile() {
     if (profileRole) profileRole.textContent = role || "user";
 
     window.currentUser = {
-        llName,
+        fullName,
         role,
         username,
         email,
@@ -54,7 +58,7 @@ function openAccountModal() {
     setValue("accountUsername", username || "");
     setValue("accountFullName", fullName || "");
     setValue("accountRole", role || "");
-    setValue("accountPhoneNumber", phoneNumber || "");
+    setValue("accountPhone", phoneNumber || "");
     setValue("accountEmail", email || "");
 
     const previewEl = document.getElementById("accountAvatarPreview");
@@ -115,113 +119,157 @@ function clearAccountErrors() {
 }
 
 async function saveAccountInfo() {
+    try {
+
+        const fullName =
+            document.getElementById("accountFullName")?.value.trim() || "";
+
+        const email =
+            document.getElementById("accountEmail")?.value.trim() || "";
+
+        const phoneNumber =
+            document.getElementById("accountPhone")?.value.trim() || "";
+
+        const avatarUrl =
+            document.getElementById("accountAvatar")?.value.trim() || "";
+
+        const authData =
+            JSON.parse(localStorage.getItem("user") || "{}");
+
+        if (!authData?.token) {
+            throw new Error("No token found");
+        }
+
+        const response = await fetch(
+            "http://localhost:5035/api/Auth/me",
+            {
+                method: "PUT",
+
+                headers: {
+                    "Authorization": `Bearer ${authData.token}`,
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    fullName,
+                    email,
+                    phoneNumber,
+                    avatarUrl
+                })
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Failed to update profile");
+        }
+
+        const updatedProfile = await response.json();
+
+        console.log("Updated profile:", updatedProfile);
+
+        // update localStorage
+        authData.user.fullName = updatedProfile.fullName;
+        authData.user.phoneNumber = updatedProfile.phoneNumber;
+        authData.user.email = updatedProfile.email;
+        authData.user.avatarUrl = updatedProfile.avatarUrl;
+
+        localStorage.setItem(
+            "user",
+            JSON.stringify(authData)
+        );
+
+        showToast(
+            "Cập nhật thông tin thành công.",
+            "success"
+        );
+
+        closeAccountModal();
+
+    } catch (error) {
+
+        console.error("Update profile error:", error);
+
+        showToast(
+            "Không thể cập nhật thông tin.",
+            "error"
+        );
+    }
+}
+
+function updateProfileInfo() {
+    return saveAccountInfo();
+}
+
+async function changePassword() {
     clearAccountErrors();
 
-    const fullName = document.getElementById("accountFullName")?.value.trim() || "";
-    const phoneNumber = document.getElementById("accountPhoneNumber")?.value.trim() || "";
-    const email = document.getElementById("accountEmail")?.value.trim() || "";
+    const currentPassword = document.getElementById("accountCurrentPassword")?.value || "";
+    const newPassword = document.getElementById("accountNewPassword")?.value || "";
+    const confirmPassword = document.getElementById("accountConfirmPassword")?.value || "";
 
     let hasError = false;
 
-    if (!fullName) {
-        showFieldError("accountFullNameError", "Họ tên không được để trống");
+    if (!currentPassword) {
+        showFieldError("accountCurrentPasswordError", "Vui lòng nhập mật khẩu hiện tại");
         hasError = true;
     }
 
-    if (!phoneNumber) {
-        showFieldError("accountPhoneError", "Số điện thoại không được để trống");
+    if (!newPassword) {
+        showFieldError("accountNewPasswordError", "Vui lòng nhập mật khẩu mới");
+        hasError = true;
+    }
+
+    if (newPassword && newPassword.length < 6) {
+        showFieldError("accountNewPasswordError", "Mật khẩu mới phải có ít nhất 6 ký tự");
+        hasError = true;
+    }
+
+    if (newPassword !== confirmPassword) {
+        showFieldError("accountConfirmPasswordError", "Mật khẩu xác nhận không khớp");
         hasError = true;
     }
 
     if (hasError) return;
 
-    if (window.currentUser) {
-        window.currentUser.fullName = fullName;
-        window.currentUser.phoneNumber = phoneNumber;
-        window.currentUser.email = email;
+    try {
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/Auth/change-password`, {
+            method: "PUT",
+            headers: Auth.buildHeaders(),
+            body: JSON.stringify({
+                CurrentPassword: currentPassword,
+                NewPassword: newPassword,
+                ConfirmPassword: confirmPassword
+            })
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            showToast(data.message || "Đổi mật khẩu thất bại", "error");
+            return;
+        }
+
+        const newToken = data.token || data.Token;
+
+        if (newToken) {
+            localStorage.setItem("token", newToken);
+
+            const userJson = localStorage.getItem("user");
+            if (userJson) {
+                const user = JSON.parse(userJson);
+                user.token = newToken;
+                user.Token = newToken;
+                localStorage.setItem("user", JSON.stringify(user));
+            }
+        }
+
+        document.getElementById("accountCurrentPassword").value = "";
+        document.getElementById("accountNewPassword").value = "";
+        document.getElementById("accountConfirmPassword").value = "";
+
+        showToast(data.message || "Đổi mật khẩu thành công!", "success");
+    } catch (error) {
+        console.error("Change password error:", error);
+        showToast("Không thể kết nối tới server", "error");
     }
-
-    const profileName = document.getElementById("profileName");
-    if (profileName) profileName.textContent = fullName;
-
-    const profileAvatar = document.getElementById("profileAvatar");
-    if (profileAvatar && !window.currentUser?.avatar) {
-        profileAvatar.textContent = (fullName || "U").charAt(0).toUpperCase();
-    }
-
-    showToast("Đã lưu thông tin tài khoản (demo FE).", "success");
-}
-
-async function changePassword() {
-  clearAccountErrors();
-
-  const currentPassword = document.getElementById("accountCurrentPassword")?.value || "";
-  const newPassword = document.getElementById("accountNewPassword")?.value || "";
-  const confirmPassword = document.getElementById("accountConfirmPassword")?.value || "";
-
-  let hasError = false;
-
-  if (!currentPassword) {
-    showFieldError("accountCurrentPasswordError", "Vui lòng nhập mật khẩu hiện tại");
-    hasError = true;
-  }
-
-  if (!newPassword) {
-    showFieldError("accountNewPasswordError", "Vui lòng nhập mật khẩu mới");
-    hasError = true;
-  }
-
-  if (newPassword && newPassword.length < 6) {
-    showFieldError("accountNewPasswordError", "Mật khẩu mới phải có ít nhất 6 ký tự");
-    hasError = true;
-  }
-
-  if (newPassword !== confirmPassword) {
-    showFieldError("accountConfirmPasswordError", "Mật khẩu xác nhận không khớp");
-    hasError = true;
-  }
-
-  if (hasError) return;
-
-  try {
-    const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/Auth/change-password`, {
-      method: "PUT",
-      headers: Auth.buildHeaders(),
-      body: JSON.stringify({
-        CurrentPassword: currentPassword,
-        NewPassword: newPassword,
-        ConfirmPassword: confirmPassword
-      })
-    });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      showToast(data.message || "Đổi mật khẩu thất bại", "error");
-      return;
-    }
-
-    const newToken = data.token || data.Token;
-
-    if (newToken) {
-      localStorage.setItem("token", newToken);
-
-      const userJson = localStorage.getItem("user");
-      if (userJson) {
-        const user = JSON.parse(userJson);
-        user.token = newToken;
-        user.Token = newToken;
-        localStorage.setItem("user", JSON.stringify(user));
-      }
-    }
-
-    document.getElementById("accountCurrentPassword").value = "";
-    document.getElementById("accountNewPassword").value = "";
-    document.getElementById("accountConfirmPassword").value = "";
-
-    showToast(data.message || "Đổi mật khẩu thành công!", "success");
-  } catch (error) {
-    console.error("Change password error:", error);
-    showToast("Không thể kết nối tới server", "error");
-  }
 }

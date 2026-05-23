@@ -1,3 +1,7 @@
+// Admin HRM page logic
+// - Quản lý danh sách nhân sự bằng localStorage
+// - Lọc nhân viên theo vai trò và tìm kiếm
+// - Thêm, sửa và thay đổi trạng thái nhân viên
 function getStoredHRMData() {
     const raw = localStorage.getItem("hrmEmployees");
     if (!raw) return [];

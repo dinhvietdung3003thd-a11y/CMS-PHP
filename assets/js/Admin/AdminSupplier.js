@@ -1,3 +1,7 @@
+// Admin suppliers page logic
+// - Tải danh sách nhà cung cấp và hiển thị bảng
+// - Lọc theo nhóm và tìm kiếm
+// - Hiển thị thông tin, sửa, điều chỉnh số dư nhà cung cấp
 async function loadSuppliersPage(showToastOnSuccess = true) {
     const container = document.getElementById("supplierTableContainer");
     const categorySelect = document.getElementById("supplierCategoryFilter");

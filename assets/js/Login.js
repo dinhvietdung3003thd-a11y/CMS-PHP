@@ -1,3 +1,8 @@
+// Login page script
+// - Chịu trách nhiệm xử lý lựa chọn vai trò admin/staff
+// - Gửi yêu cầu đăng nhập lên API
+// - Lưu token và thông tin người dùng vào localStorage
+// - Chuyển hướng tới trang Admin hoặc Dashboard dựa trên vai trò
 const BASE_URL = `${window.APP_CONFIG.API_BASE_URL}/Auth`;
 console.log("API base URL:", BASE_URL);
 

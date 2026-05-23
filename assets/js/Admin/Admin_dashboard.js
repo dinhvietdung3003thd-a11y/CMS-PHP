@@ -1,11 +1,19 @@
+// Admin dashboard shared script
+// - Cung cấp chức năng điều hướng các trang Admin
+// - Quản lý trạng thái chung cho đơn hàng, kho, nhân sự, nhà cung cấp, công thức
+// - Chứa các helper dùng chung như fetch API, toast, định dạng tiền tệ và ngày giờ
+
+// Cấu hình URL API dùng chung cho mọi cuộc gọi fetch
 const API_BASE_URL = window.APP_CONFIG.API_BASE_URL;
 
+// Dữ liệu và trạng thái cho trang đơn hàng
 let allOrders = [];
 let allProducts = [];
 let allCategories = [];
 let currentTab = "active";
 let selectedOrders = [];
 
+// Dữ liệu và trạng thái cho quản lý kho
 let allInventoryItems = [];
 let inventoryData = [];
 let inventoryTransactions = [];
@@ -16,23 +24,28 @@ let currentSupplierEditId = null;
 let supplierBalanceAdjustId = null;
 let lowStockFilterActive = false;
 
+// Dữ liệu cho công thức và nguyên liệu
 let recipeProducts = [];
 let currentRecipeProduct = null;
 let currentRecipeRows = [];
 let deletedRecipeIds = [];
 
+// Dữ liệu cho chức năng tạo đơn hàng mới
 let createOrderTables = [];
 let createOrderProducts = [];
 let createOrderItems = {};
 let selectedCreateOrderTableId = null;
 
+// Dữ liệu cho quản lý nhân sự
 let employees = [];
 let filteredEmployees = [];
 let hrmCurrentMode = "add";
 let hrmEditId = null;
 
+// Người dùng hiện tại đang đăng nhập
 window.currentUser = null;
 
+// Khi DOM được tải xong, kiểm tra quyền quản trị và khởi tạo trang
 window.addEventListener("DOMContentLoaded", () => {
     if (!window.Auth.requireAdmin()) return;
 
@@ -41,6 +54,7 @@ window.addEventListener("DOMContentLoaded", () => {
     showDashboard();
 });
 
+// Thiết lập sự kiện toàn cục cho trang quản trị
 function bindGlobalEvents() {
     document.addEventListener("click", (e) => {
         if (e.target.classList.contains("modal")) {
@@ -174,8 +188,9 @@ function downloadCSV(csvContent, fileName) {
    NAVIGATION
 ========================= */
 
-function showDashboard() {
+async function showDashboard() {
     showSection("dashboardSection");
+    await loadDashboardData();
 }
 
 function showOrdersPage() {
@@ -183,8 +198,13 @@ function showOrdersPage() {
     loadOrders();
 }
 
-function showSalesPage() {
+async function showSalesPage() {
     showSection("salesSection");
+
+    if (!allOrders.length) {
+        await loadOrders(false);
+    }
+
     loadSales();
 }
 
@@ -221,4 +241,272 @@ function showHRMPage() {
 function showSettingsPage() {
     showSection("settingsSection");
     if (typeof loadSettings === "function") loadSettings();
+}
+
+async function loadDashboardData() {
+    try {
+
+        const [
+            ordersResponse,
+            inventoryResponse,
+            tablesResponse,
+            productResponse
+        ] = await Promise.all([
+            apiFetch("/orders"),
+            apiFetch("/inventory"),
+            apiFetch("/tables"),
+            apiFetch("/product")
+        ]);
+
+        if (
+            !ordersResponse.ok ||
+            !inventoryResponse.ok ||
+            !tablesResponse.ok ||
+            !productResponse.ok
+
+        ) {
+            throw new Error("Failed to load dashboard data");
+        }
+
+        const orders = await ordersResponse.json();
+        const inventory = await inventoryResponse.json();
+        const tables = await tablesResponse.json();
+        const product = await productResponse.json();
+        const detailedOrders = await Promise.all(
+            orders.map(async (order) => {
+                const response = await apiFetch(`/Orders/${order.id}`);
+                if (!response.ok) return order;
+                return await response.json();
+            })
+        );
+
+        renderRecentOrders(orders);
+        renderRevenueChart(orders);
+        updateDashboardCards(orders, inventory, tables);
+        renderCategoryChart(detailedOrders, product);
+
+    } catch (error) {
+
+        console.error("Dashboard load error:", error);
+
+    }
+}
+
+function updateDashboardCards(orders, inventory, tables) {
+    const today = new Date().toDateString();
+
+    const todayOrders = orders.filter(order => {
+        return new Date(order.orderDate).toDateString() === today;
+    });
+
+    const todayRevenue = todayOrders.reduce((sum, order) => {
+        return sum + Number(order.totalAmount || 0);
+    }, 0);
+
+    const lowStockCount = inventory.filter(item => item.isLowStock === true).length;
+
+    const occupiedTables = tables.filter(table => {
+        return table.status?.toLowerCase() === "occupied";
+    }).length;
+
+    document.getElementById("dashKpiRevenue").textContent = formatCurrency(todayRevenue);
+    document.getElementById("dashKpiOrders").textContent = orders.length;
+    document.getElementById("dashKpiLowStock").textContent = lowStockCount;
+    document.getElementById("dashKpiTables").textContent = occupiedTables;
+}
+
+function renderRecentOrders(orders) {
+
+    const container = document.getElementById("recentOrdersContainer");
+
+    if (!container) return;
+
+    if (!orders.length) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                Chưa có đơn hàng.
+            </div>
+        `;
+
+        return;
+    }
+
+    const latestOrders = [...orders]
+        .sort((a, b) => {
+            return new Date(b.orderDate) - new Date(a.orderDate);
+        })
+        .slice(0, 5);
+
+    container.innerHTML = `
+        <table class="orders-table">
+            <thead>
+                <tr>
+                    <th>Mã</th>
+                    <th>Ngày</th>
+                    <th>Trạng thái</th>
+                    <th>Tổng tiền</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                ${latestOrders.map(order => `
+                    <tr>
+                        <td>#${order.id}</td>
+
+                        <td>
+                            ${new Date(order.orderDate).toLocaleString("vi-VN")}
+                        </td>
+
+                        <td>${order.status}</td>
+
+                        <td>
+                            ${(order.totalAmount || 0).toLocaleString("vi-VN")} đ
+                        </td>
+                    </tr>
+                `).join("")}
+            </tbody>
+        </table>
+    `;
+}
+
+let revenueChartInstance = null;
+
+function renderRevenueChart(orders) {
+    const canvas = document.getElementById("revenueChart");
+    if (!canvas || typeof Chart === "undefined") return;
+
+    const labels = [];
+    const values = [];
+
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+
+        const label = date.toLocaleDateString("vi-VN", {
+            day: "2-digit",
+            month: "2-digit"
+        });
+
+        const dateKey = date.toDateString();
+
+        const revenue = orders
+            .filter(order => new Date(order.orderDate).toDateString() === dateKey)
+            .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+
+        labels.push(label);
+        values.push(revenue);
+    }
+
+    if (revenueChartInstance) {
+        revenueChartInstance.destroy();
+    }
+
+    revenueChartInstance = new Chart(canvas, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [{
+                label: "Doanh thu",
+                data: values,
+                tension: 0.35,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.parsed.y.toLocaleString("vi-VN") + " đ";
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function (value) {
+                            return value.toLocaleString("vi-VN") + " đ";
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+let categoryChartInstance = null;
+
+function renderCategoryChart(orders, products) {
+
+    const canvas = document.getElementById("categoriesChart");
+
+    if (!canvas || typeof Chart === "undefined") return;
+
+    const productCategoryMap = {};
+
+    products.forEach(product => {
+        productCategoryMap[product.productId] =
+            product.categoryName || "Khác";
+    });
+
+    const revenueByCategory = {};
+
+    orders.forEach(order => {
+
+        if (!Array.isArray(order.details)) return;
+
+        order.details.forEach(detail => {
+
+            const category =
+                productCategoryMap[detail.productId] || "Khác";
+
+            revenueByCategory[category] =
+                (revenueByCategory[category] || 0)
+                + Number(detail.subtotal || 0);
+        });
+    });
+
+    const labels = Object.keys(revenueByCategory);
+    const values = Object.values(revenueByCategory);
+
+    if (categoryChartInstance) {
+        categoryChartInstance.destroy();
+    }
+
+    categoryChartInstance = new Chart(canvas, {
+        type: "doughnut",
+
+        data: {
+            labels,
+            datasets: [{
+                data: values
+            }]
+        },
+
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+
+            plugins: {
+                legend: {
+                    position: "bottom"
+                },
+
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return `${context.label}: ${context.parsed.toLocaleString("vi-VN")} đ`;
+                        }
+                    }
+                }
+            }
+        }
+    });
 }

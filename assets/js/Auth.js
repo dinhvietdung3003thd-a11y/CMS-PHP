@@ -1,3 +1,7 @@
+// Authentication utility object
+// - Quản lý token và dữ liệu người dùng trong localStorage
+// - Kiểm tra yêu cầu đăng nhập và quyền Admin
+// - Xây dựng header Authorization cho các API call
 window.Auth = {
     getRawUser() {
         return localStorage.getItem("user");

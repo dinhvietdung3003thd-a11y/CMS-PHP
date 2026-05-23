@@ -1,3 +1,7 @@
+// System settings page logic
+// - Đọc và lưu dữ liệu cấu hình hệ thống từ localStorage
+// - Hiển thị trạng thái maintenance và logo
+// - Cho phép đồng bộ hoặc reset cài đặt demo
 function loadSettings() {
     const stored = localStorage.getItem("systemSettings") || "{}";
     const settings = JSON.parse(stored);

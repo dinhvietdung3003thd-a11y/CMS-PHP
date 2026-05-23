@@ -1,3 +1,7 @@
+// Admin order management logic
+// - Tải danh sách đơn hàng và hiển thị theo tab
+// - Quản lý lựa chọn đơn hàng, xem chi tiết, xuất CSV
+// - Cung cấp chế độ đơn hàng active/history/online
 async function loadOrders(showToastOnSuccess = true) {
     const container = document.getElementById("ordersTableContainer");
     if (!container) return;

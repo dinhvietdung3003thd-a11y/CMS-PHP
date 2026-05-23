@@ -1,3 +1,7 @@
+// Admin categories page logic
+// - Tải danh mục sản phẩm từ API
+// - Hiển thị bảng danh mục và cập nhật dropdown sản phẩm
+// - Tìm kiếm nhanh theo tên hoặc mô tả danh mục
 async function loadCategories(showToastOnSuccess = true) {
     const container = document.getElementById("categoriesTableContainer");
     if (container) {

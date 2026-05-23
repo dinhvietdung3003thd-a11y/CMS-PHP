@@ -1,3 +1,7 @@
+// Admin inventory page logic
+// - Tải dữ liệu tồn kho và giao dịch kho từ API
+// - Hiển thị bảng tồn kho và báo cáo trạng thái hàng tồn
+// - Hỗ trợ lọc tồn kho thấp và trạng thái kho
 async function loadInventoryPage(showToastOnSuccess = true) {
     const container = document.getElementById("inventoryTableContainer");
     const reportContainer = document.getElementById("inventoryReportContainer");

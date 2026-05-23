@@ -1,3 +1,7 @@
+// Admin product management logic
+// - Tải danh sách sản phẩm và hiển thị bảng
+// - Thêm, xóa, và làm mới dữ liệu sản phẩm
+// - Áp dụng định dạng tiền tệ và lấy tên danh mục
 async function loadProducts(showToastOnSuccess = true) {
     const container = document.getElementById("productTableContainer");
     if (!container) return;
