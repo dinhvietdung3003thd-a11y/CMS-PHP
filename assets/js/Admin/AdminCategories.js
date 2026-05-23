@@ -9,7 +9,7 @@ async function loadCategories(showToastOnSuccess = true) {
     }
 
     try {
-        const response = await apiFetch("/categories");
+        const response = await apiFetch("/Categories");
         if (!response.ok) throw new Error("Không tải được danh mục.");
 
         const data = await response.json();

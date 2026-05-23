@@ -25,7 +25,9 @@ window.Auth = {
 
     getRole() {
         const user = this.getUser();
-        return user?.user?.Role
+        return user?.role
+            || user?.Role
+            || user?.user?.Role
             || user?.user?.role
             || user?.User?.Role
             || user?.User?.role
@@ -34,7 +36,9 @@ window.Auth = {
 
     getFullName() {
         const user = this.getUser();
-        return user?.user?.FullName
+        return user?.fullName
+            || user?.FullName
+            || user?.user?.FullName
             || user?.user?.fullName
             || user?.User?.FullName
             || user?.User?.fullName

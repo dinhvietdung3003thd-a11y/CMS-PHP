@@ -252,10 +252,10 @@ async function loadDashboardData() {
             tablesResponse,
             productResponse
         ] = await Promise.all([
-            apiFetch("/orders"),
-            apiFetch("/inventory"),
-            apiFetch("/tables"),
-            apiFetch("/product")
+            apiFetch("/Orders"),
+            apiFetch("/Inventory"),
+            apiFetch("/Tables"),
+            apiFetch("/Product")
         ]);
 
         if (

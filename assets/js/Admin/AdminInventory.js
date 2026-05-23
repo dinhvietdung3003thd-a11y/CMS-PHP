@@ -16,8 +16,8 @@ async function loadInventoryPage(showToastOnSuccess = true) {
 
     try {
         const [inventoryResponse, transactionResponse] = await Promise.all([
-            apiFetch("/inventory"),
-            apiFetch("/inventorytransaction")
+            apiFetch("/Inventory"),
+            apiFetch("/InventoryTransaction")
         ]);
 
         if (!inventoryResponse.ok || !transactionResponse.ok) {
@@ -253,36 +253,35 @@ async function saveInventoryTransaction() {
         return;
     }
 
-    /* Demo FE: cập nhật local ngay trên giao diện */
     const currentQty = Number(matchedItem.quantity ?? matchedItem.stockQuantity ?? matchedItem.currentStock ?? 0);
-    const newQty = type === "Import"
-        ? currentQty + quantity
-        : currentQty - quantity;
+    const newQty = type === "Import" ? currentQty + quantity : currentQty - quantity;
 
     if (type === "Export" && newQty < 0) {
         showToast("Số lượng xuất vượt quá tồn kho hiện tại", "error");
         return;
     }
 
-    matchedItem.quantity = newQty;
-
-    inventoryTransactions.unshift({
-        id: Date.now(),
-        inventoryId: itemId,
-        type,
+    const payload = {
+        inventoryId: Number(itemId),
+        transactionType: type,
         quantity,
-        note,
-        createdAt: new Date().toISOString()
+        note
+    };
+
+    const response = await apiFetch('/InventoryTransaction', {
+        method: 'POST',
+        body: JSON.stringify(payload)
     });
 
-    renderInventorySummary(inventoryData);
-    renderInventoryTable(getFilteredInventoryData());
+    if (!response.ok) {
+        const errorData = await parseJsonSafe(response);
+        throw new Error(errorData?.message || 'Không thể lưu giao dịch kho');
+    }
+
+    await loadInventoryPage(false);
     closeInventoryTransactionModal();
 
-    showToast(
-        type === "Import" ? "Stock in thành công (demo FE)" : "Stock out thành công (demo FE)",
-        "success"
-    );
+    showToast(type === "Import" ? "Stock in thành công" : "Stock out thành công", "success");
 }
 
 function openInventoryHistoryModal() {
