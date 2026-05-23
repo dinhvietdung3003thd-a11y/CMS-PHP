@@ -97,5 +97,50 @@ function filterCategories() {
 }
 
 function openCategoryModal() {
-    showToast("Category modal nâng cao sẽ nối tiếp nếu bạn muốn thêm CRUD category đầy đủ.", "success");
+    openModal("categoryModal");
+}
+
+function closeCategoryModal() {
+    closeModal("categoryModal");
+}
+
+async function saveCategoryModal() {
+    const nameInput = document.getElementById("categoryNameInputModal");
+    const descInput = document.getElementById("categoryDescriptionInputModal");
+    const name = nameInput?.value.trim() || "";
+    const description = descInput?.value.trim() || "";
+
+    if (!name) {
+        showToast("Vui lòng nhập tên danh mục.", "warning");
+        return;
+    }
+
+    try {
+        const response = await apiFetch("/Categories", {
+            method: "POST",
+            body: JSON.stringify({ name, description })
+        });
+
+        if (response.status === 404 || response.status === 405) {
+            showToast("Backend hiện chưa hỗ trợ thêm/sửa/xóa danh mục.", "warning");
+            return;
+        }
+
+        if (!response.ok) {
+            const errorData = await parseJsonSafe(response);
+            const message = errorData?.errors
+                ? Object.values(errorData.errors).flat().join(" | ")
+                : (errorData?.message || "Thêm danh mục thất bại");
+            throw new Error(message);
+        }
+
+        showToast("Thêm danh mục thành công", "success");
+        if (nameInput) nameInput.value = "";
+        if (descInput) descInput.value = "";
+        closeCategoryModal();
+        await loadCategories(false);
+    } catch (error) {
+        console.error("Save category error:", error);
+        showToast(error.message || "Không thể thêm danh mục", "error");
+    }
 }

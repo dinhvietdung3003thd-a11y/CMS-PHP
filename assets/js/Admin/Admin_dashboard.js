@@ -318,9 +318,10 @@ async function loadDashboardData() {
 
 function updateDashboardCards(orders, inventory, tables) {
     const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+    const inventoryCount = Array.isArray(inventory) ? inventory.length : 0;
     const lowStockCount = inventory.filter(item => {
-        const qty = Number(item.quantityInStock ?? item.quantity ?? item.stockQuantity ?? item.currentStock ?? 0);
-        const min = Number(item.minThreshold ?? item.min_threshold ?? item.minimumStock ?? 0);
+        const qty = Number(item.quantityInStock ?? 0);
+        const min = Number(item.minThreshold ?? 0);
         return qty > 0 && qty <= min;
     }).length;
 
@@ -330,7 +331,7 @@ function updateDashboardCards(orders, inventory, tables) {
 
     document.getElementById("dashKpiRevenue").textContent = formatCurrency(totalRevenue);
     document.getElementById("dashKpiOrders").textContent = orders.length;
-    document.getElementById("dashKpiLowStock").textContent = lowStockCount;
+    document.getElementById("dashKpiLowStock").textContent = inventoryCount;
     document.getElementById("dashKpiTables").textContent = occupiedTables;
 }
 
