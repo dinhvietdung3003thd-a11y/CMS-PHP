@@ -268,8 +268,7 @@ function closeCreateOrderModal() {
 }
 
 let createOrderProducts = [];
-let createOrderCart = [];
-let createOrderTables = [];
+let createOrderCartItems = [];
 let selectedCreateOrderTableId = null;
 
 function normalizeApiCollection(payload) {
@@ -309,13 +308,13 @@ function renderCreateOrderCart() {
     const totalElement = document.getElementById("createOrderTotal");
     if (!cartContainer || !totalElement) return;
 
-    if (!createOrderCart.length) {
+    if (!createOrderCartItems.length) {
         cartContainer.innerHTML = '<div class="empty-state">Chưa có món trong giỏ hàng.</div>';
         totalElement.textContent = formatCurrency(0);
         return;
     }
 
-    cartContainer.innerHTML = createOrderCart.map((item) => `
+    cartContainer.innerHTML = createOrderCartItems.map((item) => `
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
             <div>
                 <div>${item.name}</div>
@@ -325,7 +324,7 @@ function renderCreateOrderCart() {
         </div>
     `).join("");
 
-    const total = createOrderCart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0);
+    const total = createOrderCartItems.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0);
     totalElement.textContent = formatCurrency(total);
 }
 
@@ -346,8 +345,8 @@ async function loadCreateOrderTables() {
         const response = await apiFetch("/Tables");
         if (!response.ok) throw new Error("Không tải được danh sách bàn.");
         const data = await response.json();
-        createOrderTables = normalizeApiCollection(data);
-        const availableTables = createOrderTables.filter(table => {
+        const tables = normalizeApiCollection(data);
+        const availableTables = tables.filter(table => {
             const status = String(table?.status || "").toLowerCase();
             return table?.isAvailable === true || status.includes("available") || status.includes("trống");
         });
@@ -374,11 +373,11 @@ function addProductToOrderCart(productId) {
     const product = createOrderProducts.find(item => Number(item.productId ?? item.id) === normalizedProductId);
     if (!product) return;
 
-    const existed = createOrderCart.find(item => Number(item.productId) === normalizedProductId);
+    const existed = createOrderCartItems.find(item => Number(item.productId) === normalizedProductId);
     if (existed) {
         existed.quantity += 1;
     } else {
-        createOrderCart.push({
+        createOrderCartItems.push({
             productId: normalizedProductId,
             name: product.name ?? "Sản phẩm",
             price: Number(product.price || 0),
@@ -390,16 +389,16 @@ function addProductToOrderCart(productId) {
 
 function removeProductFromOrderCart(productId) {
     const normalizedProductId = Number(productId);
-    createOrderCart = createOrderCart.filter(item => Number(item.productId) !== normalizedProductId);
+    createOrderCartItems = createOrderCartItems.filter(item => Number(item.productId) !== normalizedProductId);
     renderCreateOrderCart();
 }
 
 async function submitCreateOrder() {
-    if (!createOrderCart.length) {
+    if (!createOrderCartItems.length) {
         showToast("Vui lòng thêm sản phẩm vào giỏ hàng.", "error");
         return;
     }
-    const hasInvalidItem = createOrderCart.some(item => !item.productId || Number(item.quantity) <= 0);
+    const hasInvalidItem = createOrderCartItems.some(item => !item.productId || Number(item.quantity) <= 0);
     if (hasInvalidItem) {
         showToast("Giỏ hàng có sản phẩm không hợp lệ.", "error");
         return;
@@ -409,7 +408,7 @@ async function submitCreateOrder() {
         customerId: null,
         tableId: selectedCreateOrderTableId ? Number(selectedCreateOrderTableId) : null,
         note: "",
-        details: createOrderCart.map(item => ({
+        details: createOrderCartItems.map(item => ({
             productId: Number(item.productId),
             quantity: Number(item.quantity)
         }))
@@ -442,7 +441,7 @@ async function submitCreateOrder() {
 
 function openCreateOrderModal() {
     openModal("createOrderModal");
-    createOrderCart = [];
+    createOrderCartItems = [];
     selectedCreateOrderTableId = null;
     const tableSelect = document.getElementById("createOrderTableSelect");
     if (tableSelect) tableSelect.value = "";
@@ -463,8 +462,6 @@ window.closeCreateOrderModal = closeCreateOrderModal;
 window.submitCreateOrder = submitCreateOrder;
 window.openCreateOrderModal = openCreateOrderModal;
 window.addProductToOrderCart = addProductToOrderCart;
-window.loadOrders = loadOrders;
-window.openSearchModal = openSearchModal;
 window.removeProductFromOrderCart = removeProductFromOrderCart;
 window.handleCreateOrderTableChange = handleCreateOrderTableChange;
 
