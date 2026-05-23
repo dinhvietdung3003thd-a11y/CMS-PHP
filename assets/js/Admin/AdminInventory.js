@@ -197,12 +197,14 @@ function loadInventoryReport() {
     `;
 }
 
-function openInventoryTransactionModal(type) {
+async function openInventoryTransactionModal(type) {
+    const modal = document.getElementById("inventoryTransactionModal");
     const title = document.getElementById("inventoryTransactionModalTitle");
-    const actionInput = document.getElementById("inventoryTransactionType");
-    const amountInput = document.getElementById("inventoryTransactionQuantity");
-    const noteInput = document.getElementById("inventoryTransactionNote");
-    const select = document.getElementById("inventoryTransactionItem");
+    const actionInput = document.getElementById("inventoryTransactionTypeInput");
+    const amountInput = document.getElementById("inventoryTransactionQuantityInput");
+    const noteInput = document.getElementById("inventoryTransactionNoteInput");
+    const priceInput = document.getElementById("inventoryTransactionPriceInput");
+    const select = document.getElementById("inventoryTransactionItemSelect") || modal?.querySelector("select");
 
     if (title) {
         title.textContent = type === "Import" ? "Stock In" : "Stock Out";
@@ -214,28 +216,41 @@ function openInventoryTransactionModal(type) {
 
     if (amountInput) amountInput.value = "";
     if (noteInput) noteInput.value = "";
+    if (priceInput) priceInput.value = "";
 
-    if (select) {
-        const inventorySource = Array.isArray(inventoryData) && inventoryData.length
-            ? inventoryData
-            : (Array.isArray(allInventoryItems) ? allInventoryItems : []);
+    if (!select) {
+        showToast("Không tìm thấy danh sách nguyên liệu.", "error");
+        return;
+    }
 
-        if (!inventorySource.length) {
-            showToast("Chưa có dữ liệu nguyên liệu trong kho.", "warning");
-            return;
+    try {
+        const inventoryResponse = await apiFetch("/Inventory");
+
+        if (!inventoryResponse.ok) {
+            throw new Error("Không thể tải danh sách nguyên liệu.");
         }
+
+        const inventoryResult = await inventoryResponse.json();
+        const inventory = Array.isArray(inventoryResult) ? inventoryResult : (inventoryResult?.data || []);
 
         select.innerHTML = `
             <option value="">Chọn nguyên liệu</option>
-            ${inventorySource.map(item => `
+            ${inventory.map(item => `
                 <option value="${item.inventoryId ?? item.id ?? ""}">
-                    ${item.name ?? item.inventoryName ?? "-"}${item.unit ? ` (${item.unit})` : ""}
+                    ${item.name ?? item.inventoryName ?? "-"} (${item.unit || ""})
                 </option>
             `).join("")}
         `;
-    }
 
-    openModal("inventoryTransactionModal");
+        if (!inventory.length) {
+            showToast("Chưa có nguyên liệu trong kho.", "warning");
+        }
+
+        openModal("inventoryTransactionModal");
+    } catch (error) {
+        console.error("Load inventory for modal error:", error);
+        showToast(error.message || "Không thể tải danh sách nguyên liệu.", "error");
+    }
 }
 
 function closeInventoryTransactionModal() {
@@ -243,20 +258,13 @@ function closeInventoryTransactionModal() {
 }
 
 async function saveInventoryTransaction() {
-    const type = document.getElementById("inventoryTransactionType")?.value || "";
-    const itemId = document.getElementById("inventoryTransactionItem")?.value || "";
-    const quantity = Number(document.getElementById("inventoryTransactionQuantity")?.value || 0);
-    const price = Number(document.getElementById("inventoryTransactionPrice")?.value || 0);
-    const note = document.getElementById("inventoryTransactionNote")?.value.trim() || "";
-
-    const inventorySource = Array.isArray(inventoryData) && inventoryData.length
-        ? inventoryData
-        : (Array.isArray(allInventoryItems) ? allInventoryItems : []);
-
-    if (!inventorySource.length) {
-        showToast("Chưa có dữ liệu nguyên liệu trong kho.", "warning");
-        return;
-    }
+    const type = document.getElementById("inventoryTransactionTypeInput")?.value || "";
+    const modal = document.getElementById("inventoryTransactionModal");
+    const inventorySelect = document.getElementById("inventoryTransactionItemSelect") || modal?.querySelector("select");
+    const itemId = inventorySelect?.value || "";
+    const quantity = Number(document.getElementById("inventoryTransactionQuantityInput")?.value || 0);
+    const price = Number(document.getElementById("inventoryTransactionPriceInput")?.value || 0);
+    const note = document.getElementById("inventoryTransactionNoteInput")?.value.trim() || "";
 
     if (!itemId) {
         showToast("Vui lòng chọn nguyên liệu.", "error");
