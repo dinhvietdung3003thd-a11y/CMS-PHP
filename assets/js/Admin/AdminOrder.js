@@ -5,7 +5,8 @@
 const createOrderState = {
     products: [],
     cart: [],
-    selectedTableId: null
+    selectedTableId: null,
+    customerId: ""
 };
 
 async function loadOrders(showToastOnSuccess = true) {
@@ -372,6 +373,24 @@ function renderCreateOrderCartForModal() {
 }
 
 async function submitCreateOrder() {
+    const customerIdInput = document.getElementById("createOrderCustomerIdInput")?.value?.trim() || "";
+    const customerId = Number(customerIdInput);
+    if (!customerIdInput || Number.isNaN(customerId) || customerId <= 0) {
+        showToast("Customer ID là bắt buộc và phải là số lớn hơn 0", "error");
+        return;
+    }
+
+    if (!createOrderState.cart.length) {
+        showToast("Giỏ hàng không được để trống", "error");
+        return;
+    }
+
+    const hasInvalidQuantity = createOrderState.cart.some(item => Number(item.quantity) <= 0 || Number.isNaN(Number(item.quantity)));
+    if (hasInvalidQuantity) {
+        showToast("Số lượng mỗi sản phẩm phải lớn hơn 0", "error");
+        return;
+    }
+
     const details = createOrderState.cart
         .map(item => ({
             productId: Number(item.productId),
@@ -385,7 +404,7 @@ async function submitCreateOrder() {
     }
 
     const payload = {
-        customerId: null,
+        customerId,
         tableId: createOrderState.selectedTableId ? Number(createOrderState.selectedTableId) : null,
         note: "",
         details
@@ -395,9 +414,13 @@ async function submitCreateOrder() {
         const response = await apiFetch("/Orders", { method: "POST", body: JSON.stringify(payload) });
         if (!response.ok) {
             const errorData = await parseJsonSafe(response);
-            const message = errorData?.errors
+            const message = response.status === 422
+                ? (errorData?.errors
+                    ? Object.entries(errorData.errors).map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(", ") : errors}`).join(" | ")
+                    : (errorData?.message || "Dữ liệu không hợp lệ (422)"))
+                : (errorData?.errors
                 ? Object.values(errorData.errors).flat().join(" | ")
-                : (errorData?.message || "Tạo đơn hàng thất bại");
+                : (errorData?.message || "Tạo đơn hàng thất bại"));
             throw new Error(message);
         }
 
@@ -413,7 +436,16 @@ async function submitCreateOrder() {
 function openCreateOrderModal() {
     openModal("createOrderModal");
     createOrderState.cart = [];
-    createOrderState.selectedTableId = document.getElementById("createOrderTableSelect")?.value || null;
+    createOrderState.selectedTableId = null;
+    createOrderState.customerId = "";
+    const tableSelect = document.getElementById("createOrderTableSelect");
+    if (tableSelect) {
+        tableSelect.value = "";
+    }
+    const customerIdInput = document.getElementById("createOrderCustomerIdInput");
+    if (customerIdInput) {
+        customerIdInput.value = "";
+    }
     renderCreateOrderCartForModal();
     loadCreateOrderProductsForModal();
 }
