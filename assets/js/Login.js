@@ -49,8 +49,8 @@ loginForm.onsubmit = async (e) => {
     btnText.innerText = "Đang xử lý...";
 
     const loginData = {
-        Username: document.getElementById("username").value.trim(),
-        Password: document.getElementById("password").value.trim()
+        username: document.getElementById("username").value.trim(),
+        password: document.getElementById("password").value.trim()
     };
 
     try {
