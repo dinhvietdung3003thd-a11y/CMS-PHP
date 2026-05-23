@@ -182,6 +182,14 @@ async function apiFetch(path, options = {}) {
         showToast(errorText, "error");
     }
 
+    if (response.status === 404) {
+        showToast("Not found (404). Không tìm thấy dữ liệu yêu cầu.", "error");
+    }
+
+    if (response.status >= 500) {
+        showToast("Có lỗi hệ thống (500). Vui lòng thử lại sau.", "error");
+    }
+
     return response;
 }
 
@@ -311,8 +319,8 @@ async function loadDashboardData() {
 function updateDashboardCards(orders, inventory, tables) {
     const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
     const lowStockCount = inventory.filter(item => {
-        const qty = Number(item.quantityInStock || 0);
-        const min = Number(item.minThreshold || 0);
+        const qty = Number(item.quantityInStock ?? item.quantity ?? item.stockQuantity ?? item.currentStock ?? 0);
+        const min = Number(item.minThreshold ?? item.min_threshold ?? item.minimumStock ?? 0);
         return qty > 0 && qty <= min;
     }).length;
 

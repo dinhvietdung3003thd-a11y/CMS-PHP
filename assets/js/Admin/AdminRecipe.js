@@ -272,22 +272,28 @@ async function addRecipeItem() {
     if (!quantityNeeded) return;
 
     const payload = {
-        productId: currentRecipeProduct.productId,
+        productId: Number(currentRecipeProduct.productId),
         inventoryId: Number(inventoryId),
         quantityNeeded: Number(quantityNeeded)
     };
+    if (!payload.productId || !payload.inventoryId || !payload.quantityNeeded) {
+        showToast("Thiếu productId/inventoryId/quantityNeeded hợp lệ.", "warning");
+        return;
+    }
 
     try {
         const response = await apiFetch("/Recipe", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
             body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
-            throw new Error("Create recipe failed");
+            const errorData = await parseJsonSafe(response);
+            throw new Error(
+                errorData?.errors
+                    ? Object.values(errorData.errors).flat().join(" | ")
+                    : (errorData?.message || "Create recipe failed")
+            );
         }
 
         showToast("Thêm nguyên liệu thành công", "success");
@@ -362,24 +368,27 @@ async function editRecipeItem(recipeId) {
         const recipe = await detailResponse.json();
 
         const payload = {
-            recipeId: Number(recipe.recipeId),
             productId: Number(recipe.productId),
             inventoryId: Number(recipe.inventoryId),
-            quantityNeeded: quantityNeeded
+            quantityNeeded: Number(quantityNeeded)
         };
-
-        console.log("PUT Recipe payload:", payload);
+        if (!payload.productId || !payload.inventoryId || !payload.quantityNeeded) {
+            showToast("Thiếu productId/inventoryId/quantityNeeded hợp lệ.", "warning");
+            return;
+        }
 
         const response = await apiFetch(`/Recipe/${recipeId}`, {
             method: "PUT",
-            headers: {
-                "Content-Type": "application/json"
-            },
             body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
-            throw new Error("Update recipe failed");
+            const errorData = await parseJsonSafe(response);
+            throw new Error(
+                errorData?.errors
+                    ? Object.values(errorData.errors).flat().join(" | ")
+                    : (errorData?.message || "Update recipe failed")
+            );
         }
 
         showToast("Cập nhật công thức thành công", "success");

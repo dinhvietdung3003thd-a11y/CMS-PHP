@@ -137,6 +137,8 @@ async function deleteProduct() {
 
     const confirmed = confirm("Bạn có chắc muốn xóa sản phẩm này không?");
     if (!confirmed) return;
+    const deleteInput = document.getElementById("deleteProductIdInput");
+    if (deleteInput) deleteInput.disabled = true;
 
     try {
         const response = await apiFetch(`/Product/${productId}`, {
@@ -145,14 +147,21 @@ async function deleteProduct() {
 
         if (!response.ok) {
             const errorData = await parseJsonSafe(response);
-            throw new Error(errorData?.message || "Xóa sản phẩm thất bại");
+            const serverMessage = String(errorData?.message || "");
+            if (response.status >= 500 || /constraint|foreign key|order_details/i.test(serverMessage)) {
+                showToast("Không thể xóa sản phẩm vì đã có đơn hàng sử dụng sản phẩm này.", "warning");
+                return;
+            }
+            showToast(serverMessage || "Xóa sản phẩm thất bại", "error");
+            return;
         }
 
         showToast("Xóa sản phẩm thành công", "success");
         await loadProducts(false);
         document.getElementById("deleteProductIdInput").value = "";
     } catch (error) {
-        console.error("Delete product error:", error);
-        showToast(error.message || "Xóa sản phẩm thất bại", "error");
+        showToast("Không thể xóa sản phẩm. Vui lòng thử lại.", "error");
+    } finally {
+        if (deleteInput) deleteInput.disabled = false;
     }
 }

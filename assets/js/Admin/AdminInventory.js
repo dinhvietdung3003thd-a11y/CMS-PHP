@@ -216,6 +216,10 @@ function openInventoryTransactionModal(type) {
     if (noteInput) noteInput.value = "";
 
     if (select) {
+        if (!inventoryData.length) {
+            showToast("Chưa có dữ liệu nguyên liệu trong kho.", "warning");
+            return;
+        }
         select.innerHTML = `
             <option value="">Chọn nguyên liệu</option>
             ${inventoryData.map(item => `
@@ -282,6 +286,8 @@ async function saveInventoryTransaction() {
 
     showToast(type === "Import" ? "Stock in thành công" : "Stock out thành công", "success");
 }
+
+window.submitInventoryTransaction = saveInventoryTransaction;
 
 function openInventoryHistoryModal() {
     const body = document.getElementById("inventoryHistoryBody");
