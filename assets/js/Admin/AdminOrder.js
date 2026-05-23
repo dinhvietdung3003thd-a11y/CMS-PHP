@@ -465,7 +465,6 @@ window.openCreateOrderModal = openCreateOrderModal;
 window.addProductToOrderCart = addProductToOrderCart;
 window.loadOrders = loadOrders;
 window.openSearchModal = openSearchModal;
-window.switchOrderTab = switchOrderTab;
 window.removeProductFromOrderCart = removeProductFromOrderCart;
 window.handleCreateOrderTableChange = handleCreateOrderTableChange;
 
