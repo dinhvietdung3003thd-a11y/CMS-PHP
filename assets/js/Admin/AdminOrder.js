@@ -267,41 +267,167 @@ function closeCreateOrderModal() {
     closeModal("createOrderModal");
 }
 
+let createOrderProducts = [];
+let createOrderCart = [];
+let createOrderTables = [];
+let selectedCreateOrderTableId = null;
+
+function normalizeApiCollection(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.result)) return payload.result;
+    return [];
+}
+
+function renderCreateOrderProducts() {
+    const container = document.getElementById("createOrderProductsList");
+    if (!container) return;
+
+    if (!createOrderProducts.length) {
+        container.innerHTML = '<div class="empty-state">Chưa có sản phẩm khả dụng.</div>';
+        return;
+    }
+
+    container.innerHTML = createOrderProducts.map((product) => {
+        const productId = product.productId ?? product.id;
+        if (!productId) return "";
+        return `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+                <div>
+                    <div>${product.name ?? "Sản phẩm"}</div>
+                    <small>${formatCurrency(Number(product.price || 0))}</small>
+                </div>
+                <button class="btn-sm btn-success" type="button" onclick="addProductToOrderCart(${Number(productId)})">Thêm</button>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderCreateOrderCart() {
+    const cartContainer = document.getElementById("createOrderCart");
+    const totalElement = document.getElementById("createOrderTotal");
+    if (!cartContainer || !totalElement) return;
+
+    if (!createOrderCart.length) {
+        cartContainer.innerHTML = '<div class="empty-state">Chưa có món trong giỏ hàng.</div>';
+        totalElement.textContent = formatCurrency(0);
+        return;
+    }
+
+    cartContainer.innerHTML = createOrderCart.map((item) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+            <div>
+                <div>${item.name}</div>
+                <small>${item.quantity} × ${formatCurrency(item.price)} = ${formatCurrency(item.price * item.quantity)}</small>
+            </div>
+            <button class="btn-sm btn-danger" type="button" onclick="removeProductFromOrderCart(${Number(item.productId)})">Xóa</button>
+        </div>
+    `).join("");
+
+    const total = createOrderCart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0);
+    totalElement.textContent = formatCurrency(total);
+}
+
+async function loadCreateOrderProducts() {
+    const response = await apiFetch("/Product");
+    if (!response.ok) throw response;
+    const data = await response.json();
+    const normalized = normalizeApiCollection(data);
+    createOrderProducts = normalized.filter(product => (product?.isAvailable !== false) && (product?.productId ?? product?.id));
+    renderCreateOrderProducts();
+}
+
+async function loadCreateOrderTables() {
+    const tableSelect = document.getElementById("createOrderTableSelect");
+    if (!tableSelect) return;
+
+    try {
+        const response = await apiFetch("/Tables");
+        if (!response.ok) throw new Error("Không tải được danh sách bàn.");
+        const data = await response.json();
+        createOrderTables = normalizeApiCollection(data);
+        const availableTables = createOrderTables.filter(table => {
+            const status = String(table?.status || "").toLowerCase();
+            return table?.isAvailable === true || status.includes("available") || status.includes("trống");
+        });
+
+        tableSelect.innerHTML = `<option value="">Không chọn bàn</option>${availableTables.map(table => {
+            const tableId = table.tableId ?? table.id;
+            const tableName = table.tableName ?? table.name ?? `Bàn ${tableId}`;
+            if (!tableId) return "";
+            return `<option value="${Number(tableId)}">${tableName}</option>`;
+        }).join("")}`;
+    } catch (error) {
+        console.error("Load tables error:", error);
+        tableSelect.innerHTML = '<option value="">Không chọn bàn</option>';
+    }
+}
+
+function handleCreateOrderTableChange(value) {
+    selectedCreateOrderTableId = value && String(value).trim() ? Number(value) : null;
+}
+
+function addProductToOrderCart(productId) {
+    const normalizedProductId = Number(productId);
+    if (!normalizedProductId) return;
+    const product = createOrderProducts.find(item => Number(item.productId ?? item.id) === normalizedProductId);
+    if (!product) return;
+
+    const existed = createOrderCart.find(item => Number(item.productId) === normalizedProductId);
+    if (existed) {
+        existed.quantity += 1;
+    } else {
+        createOrderCart.push({
+            productId: normalizedProductId,
+            name: product.name ?? "Sản phẩm",
+            price: Number(product.price || 0),
+            quantity: 1
+        });
+    }
+    renderCreateOrderCart();
+}
+
+function removeProductFromOrderCart(productId) {
+    const normalizedProductId = Number(productId);
+    createOrderCart = createOrderCart.filter(item => Number(item.productId) !== normalizedProductId);
+    renderCreateOrderCart();
+}
+
 async function submitCreateOrder() {
-    const customerRaw = prompt("Nhập customerId:", "");
-    if (customerRaw === null) return;
-    const productRaw = prompt("Nhập productId:", "");
-    if (productRaw === null) return;
-    const quantityRaw = prompt("Nhập quantity:", "1");
-    if (quantityRaw === null) return;
-    const tableRaw = prompt("Nhập tableId (để trống nếu không có):", "");
-    if (tableRaw === null) return;
-    const noteRaw = prompt("Nhập ghi chú (tùy chọn):", "") ?? "";
-
-    const customerId = Number(customerRaw);
-    const productId = Number(productRaw);
-    const quantity = Number(quantityRaw);
-    const tableId = tableRaw.trim() ? Number(tableRaw) : null;
-
-    if (!customerId || Number.isNaN(customerId)) return showToast("customerId là bắt buộc", "error");
-    if (!productId || Number.isNaN(productId)) return showToast("productId là bắt buộc", "error");
-    if (!quantity || Number.isNaN(quantity) || quantity <= 0) return showToast("quantity phải lớn hơn 0", "error");
-    if (tableId !== null && Number.isNaN(tableId)) return showToast("tableId không hợp lệ", "error");
+    if (!createOrderCart.length) {
+        showToast("Vui lòng thêm sản phẩm vào giỏ hàng.", "error");
+        return;
+    }
+    const hasInvalidItem = createOrderCart.some(item => !item.productId || Number(item.quantity) <= 0);
+    if (hasInvalidItem) {
+        showToast("Giỏ hàng có sản phẩm không hợp lệ.", "error");
+        return;
+    }
 
     const payload = {
-        customerId,
-        tableId,
-        note: String(noteRaw || ""),
-        details: [{ productId, quantity }]
+        customerId: null,
+        tableId: selectedCreateOrderTableId ? Number(selectedCreateOrderTableId) : null,
+        note: "",
+        details: createOrderCart.map(item => ({
+            productId: Number(item.productId),
+            quantity: Number(item.quantity)
+        }))
     };
 
     try {
         const response = await apiFetch("/Orders", { method: "POST", body: JSON.stringify(payload) });
         if (!response.ok) {
             const errorData = await parseJsonSafe(response);
-            const message = errorData?.errors
+            let message = errorData?.errors
                 ? Object.values(errorData.errors).flat().join(" | ")
                 : (errorData?.message || "Tạo đơn hàng thất bại");
+            if ((response.status === 401 || response.status === 403) && !errorData?.errors) {
+                message = "Bạn không có quyền tạo đơn hàng.";
+            }
+            if (response.status === 422 && !message) {
+                message = "Dữ liệu tạo đơn chưa hợp lệ.";
+            }
             throw new Error(message);
         }
 
@@ -316,10 +442,31 @@ async function submitCreateOrder() {
 
 function openCreateOrderModal() {
     openModal("createOrderModal");
+    createOrderCart = [];
+    selectedCreateOrderTableId = null;
+    const tableSelect = document.getElementById("createOrderTableSelect");
+    if (tableSelect) tableSelect.value = "";
+    renderCreateOrderCart();
+    loadCreateOrderTables();
+    loadCreateOrderProducts().catch(async (errorResponse) => {
+        let message = "Không tải được thực đơn.";
+        if (errorResponse?.status === 401 || errorResponse?.status === 403) {
+            message = "Bạn không có quyền truy cập thực đơn.";
+        }
+        showToast(message, "error");
+        createOrderProducts = [];
+        renderCreateOrderProducts();
+    });
 }
 
 window.closeCreateOrderModal = closeCreateOrderModal;
 window.submitCreateOrder = submitCreateOrder;
+window.openCreateOrderModal = openCreateOrderModal;
+window.addProductToOrderCart = addProductToOrderCart;
+window.loadOrders = loadOrders;
+window.openSearchModal = openSearchModal;
+window.removeProductFromOrderCart = removeProductFromOrderCart;
+window.handleCreateOrderTableChange = handleCreateOrderTableChange;
 
 function loadSales() {
     const container = document.getElementById("salesTableContainer");
