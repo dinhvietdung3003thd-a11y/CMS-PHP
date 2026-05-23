@@ -22,20 +22,15 @@ async function loadSuppliersPage(showToastOnSuccess = true) {
     if (totalDebt) totalDebt.textContent = "0 ₫";
 
     try {
-        const [suppliersResponse, categoriesResponse] = await Promise.all([
-            apiFetch("/Supplier"),
-            apiFetch("/Categories")
-        ]);
+        const suppliersResponse = await apiFetch("/Supplier");
 
-        if (!suppliersResponse.ok || !categoriesResponse.ok) {
+        if (!suppliersResponse.ok) {
             throw new Error("Unable to load supplier data.");
         }
 
         suppliersData = await suppliersResponse.json();
-        const categories = await categoriesResponse.json();
-
         renderSuppliersTable(suppliersData);
-        populateSupplierCategoryFilter(categories);
+        populateSupplierCategoryFilter([]);
         updateSupplierSummary(suppliersData);
 
         if (showToastOnSuccess) {
@@ -107,8 +102,6 @@ function renderSuppliersTable(data) {
                     <th>Supplier</th>
                     <th>Contact</th>
                     <th>Phone</th>
-                    <th>Status</th>
-                    <th>Balance</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -120,16 +113,11 @@ function renderSuppliersTable(data) {
                         <td>${item.contactName ?? "-"}</td>
                         <td>${item.phone ?? "-"}</td>
                         <td>
-                            <span class="supplier-status-badge ${(String(item.status || "Active").toLowerCase() === "active") ? "active" : "inactive"}">
-                                ${item.status ?? "Active"}
-                            </span>
-                        </td>
-                        <td class="supplier-debt">${formatCurrency(item.balance ?? item.debt ?? 0)}</td>
-                        <td>
                             <div class="supplier-table-actions">
                                 <button class="btn-sm btn-info" onclick='openSupplierInfoModal(${JSON.stringify(item)})'>Info</button>
                                 <button class="btn-sm btn-success" onclick='openSupplierEditModal(${JSON.stringify(item)})'>Edit</button>
-                                <button class="btn-sm btn-danger" onclick='openSupplierBalanceModal(${JSON.stringify(item)})'>Balance</button>
+                                <button class="btn-sm btn-danger" onclick='deleteSupplier(${JSON.stringify(item)})'>Delete</button>
+                                <button class="btn-sm btn-warning" onclick='openSupplierBalanceModal(${JSON.stringify(item)})'>Balance</button>
                             </div>
                         </td>
                     </tr>
@@ -226,8 +214,7 @@ async function saveSupplier() {
         contactName: document.getElementById("supplierContactInput")?.value.trim() || "",
         phone: document.getElementById("supplierPhoneInput")?.value.trim() || "",
         email: document.getElementById("supplierEmailInput")?.value.trim() || "",
-        address: document.getElementById("supplierAddressInput")?.value.trim() || "",
-        status: document.getElementById("supplierStatusInput")?.value || "Active"
+        address: document.getElementById("supplierAddressInput")?.value.trim() || ""
     };
 
     if (!payload.name || !payload.phone) {
@@ -237,6 +224,10 @@ async function saveSupplier() {
 
     try {
         const isEdit = !!currentSupplierEditId;
+        if (isEdit && !currentSupplierEditId) {
+            showToast("Không xác định được supplierId để cập nhật.", "error");
+            return;
+        }
         const path = isEdit ? `/Supplier/${currentSupplierEditId}` : "/Supplier";
         const method = isEdit ? "PUT" : "POST";
 
@@ -280,19 +271,23 @@ function closeSupplierBalanceModal() {
 }
 
 async function saveSupplierBalanceAdjustment() {
-    if (!supplierBalanceAdjustId) {
-        showToast("Không xác định được nhà cung cấp", "error");
-        return;
-    }
-
-    const amount = Number(document.getElementById("supplierBalanceAmount")?.value || 0);
-    const note = document.getElementById("supplierBalanceNote")?.value.trim() || "";
-
-    if (!amount || amount <= 0) {
-        showToast("Vui lòng nhập số tiền hợp lệ", "error");
-        return;
-    }
-
-    showToast("Chức năng điều chỉnh balance đang để demo FE.", "success");
+    showToast("Backend không hỗ trợ điều chỉnh công nợ nhà cung cấp. Chức năng này đã bị vô hiệu hóa.", "warning");
     closeSupplierBalanceModal();
+}
+
+async function deleteSupplier(item) {
+    const supplierId = item?.supplierId ?? item?.id;
+    if (!supplierId) return showToast("Supplier ID không hợp lệ.", "error");
+    if (!confirm(`Bạn có chắc muốn xóa nhà cung cấp #${supplierId}?`)) return;
+    const response = await apiFetch(`/Supplier/${supplierId}`, { method: "DELETE" });
+    if (!response.ok) {
+        const errorData = await parseJsonSafe(response);
+        const message = errorData?.errors
+            ? Object.values(errorData.errors).flat().join(" | ")
+            : (errorData?.message || "Xóa nhà cung cấp thất bại");
+        showToast(message, "error");
+        return;
+    }
+    showToast("Xóa nhà cung cấp thành công", "success");
+    await loadSuppliersPage(false);
 }

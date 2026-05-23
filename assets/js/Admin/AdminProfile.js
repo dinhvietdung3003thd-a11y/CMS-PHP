@@ -2,20 +2,23 @@
 // - Hiển thị thông tin người dùng và avatar
 // - Xử lý sửa thông tin tài khoản và thay đổi mật khẩu
 // - Đọc dữ liệu user từ localStorage để dùng toàn cục
-function loadUserProfile() {
-    const userJson = localStorage.getItem("user");
-    if (!userJson) {
-        window.location.href = "./Login.html";
-        return;
-    }
-
-    const user = JSON.parse(userJson);
-    const fullName = user.user?.fullName || user.user?.FullName || "User";
-    const role = user.user?.role || user.user?.Role || "user";
-    const username = user.user?.username || user.user?.Username || "Unknown";
-    const email = user.user?.email || user.user?.Email || "";
-    const phoneNumber = user.user?.phoneNumber || user.user?.PhoneNumber || "-";
-    const avatarUrl = user.user?.avatar || user.user?.Avatar || null;
+async function loadUserProfile() {
+    const cached = window.Auth.getUser();
+    if (!cached) return window.Auth.logout();
+    let profile = cached.user || cached;
+    try {
+        const meRes = await apiFetch("/Auth/me");
+        if (meRes.ok) {
+            profile = await meRes.json();
+            window.Auth.saveAuth({ ...cached, user: profile });
+        }
+    } catch (_e) {}
+    const fullName = profile.fullName || profile.FullName || "User";
+    const role = profile.role || profile.Role || "Staff";
+    const username = profile.username || "Unknown";
+    const email = profile.email || profile.Email || "";
+    const phoneNumber = profile.phoneNumber || profile.PhoneNumber || "-";
+    const avatarUrl = profile.avatar || profile.Avatar || null;
 
     const profileAvatar = document.getElementById("profileAvatar");
     if (profileAvatar) {
@@ -160,11 +163,10 @@ async function changePassword() {
     try {
         const response = await apiFetch(`/Auth/change-password`, {
             method: "POST",
-            headers: Auth.buildHeaders(),
             body: JSON.stringify({
-                CurrentPassword: currentPassword,
-                NewPassword: newPassword,
-                ConfirmPassword: confirmPassword
+                currentPassword,
+                newPassword,
+                confirmPassword
             })
         });
 
