@@ -263,9 +263,63 @@ function openSearchModal() {
     showToast("Bạn có thể nối search modal theo UI gốc ở bước sau.", "success");
 }
 
-function openCreateOrderModal() {
-    showToast("Tạo đơn đang tạm khóa: UI hiện chưa có input details (productId, quantity) theo API /Orders.", "warning");
+function closeCreateOrderModal() {
+    closeModal("createOrderModal");
 }
+
+async function submitCreateOrder() {
+    const customerRaw = prompt("Nhập customerId:", "");
+    if (customerRaw === null) return;
+    const productRaw = prompt("Nhập productId:", "");
+    if (productRaw === null) return;
+    const quantityRaw = prompt("Nhập quantity:", "1");
+    if (quantityRaw === null) return;
+    const tableRaw = prompt("Nhập tableId (để trống nếu không có):", "");
+    if (tableRaw === null) return;
+    const noteRaw = prompt("Nhập ghi chú (tùy chọn):", "") ?? "";
+
+    const customerId = Number(customerRaw);
+    const productId = Number(productRaw);
+    const quantity = Number(quantityRaw);
+    const tableId = tableRaw.trim() ? Number(tableRaw) : null;
+
+    if (!customerId || Number.isNaN(customerId)) return showToast("customerId là bắt buộc", "error");
+    if (!productId || Number.isNaN(productId)) return showToast("productId là bắt buộc", "error");
+    if (!quantity || Number.isNaN(quantity) || quantity <= 0) return showToast("quantity phải lớn hơn 0", "error");
+    if (tableId !== null && Number.isNaN(tableId)) return showToast("tableId không hợp lệ", "error");
+
+    const payload = {
+        customerId,
+        tableId,
+        note: String(noteRaw || ""),
+        details: [{ productId, quantity }]
+    };
+
+    try {
+        const response = await apiFetch("/Orders", { method: "POST", body: JSON.stringify(payload) });
+        if (!response.ok) {
+            const errorData = await parseJsonSafe(response);
+            const message = errorData?.errors
+                ? Object.values(errorData.errors).flat().join(" | ")
+                : (errorData?.message || "Tạo đơn hàng thất bại");
+            throw new Error(message);
+        }
+
+        showToast("Tạo đơn hàng thành công", "success");
+        closeCreateOrderModal();
+        await loadOrders(false);
+    } catch (error) {
+        console.error("Create order error:", error);
+        showToast(error.message || "Không thể tạo đơn hàng", "error");
+    }
+}
+
+function openCreateOrderModal() {
+    openModal("createOrderModal");
+}
+
+window.closeCreateOrderModal = closeCreateOrderModal;
+window.submitCreateOrder = submitCreateOrder;
 
 function loadSales() {
     const container = document.getElementById("salesTableContainer");

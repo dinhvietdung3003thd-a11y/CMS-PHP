@@ -198,7 +198,10 @@ function openSupplierEditModal(item) {
     setValue("supplierPhoneInput", item.phone ?? "");
     setValue("supplierEmailInput", item.email ?? "");
     setValue("supplierAddressInput", item.address ?? "");
-    setValue("supplierStatusInput", item.status ?? "Active");
+    const title = document.getElementById("supplierModalTitle");
+    const submitBtn = document.getElementById("supplierModalSubmit");
+    if (title) title.textContent = "Edit Supplier";
+    if (submitBtn) submitBtn.textContent = "Update Supplier";
 
     openModal("supplierModal");
 }
@@ -208,7 +211,23 @@ function closeSupplierModal() {
     currentSupplierEditId = null;
 }
 
-async function saveSupplier() {
+function openSupplierModal(mode = "add") {
+    if (mode === "add") {
+        currentSupplierEditId = null;
+        setValue("supplierNameInput", "");
+        setValue("supplierContactInput", "");
+        setValue("supplierPhoneInput", "");
+        setValue("supplierEmailInput", "");
+        setValue("supplierAddressInput", "");
+        const title = document.getElementById("supplierModalTitle");
+        const submitBtn = document.getElementById("supplierModalSubmit");
+        if (title) title.textContent = "Add New Supplier";
+        if (submitBtn) submitBtn.textContent = "Save Supplier";
+    }
+    openModal("supplierModal");
+}
+
+async function submitSupplierForm() {
     const payload = {
         name: document.getElementById("supplierNameInput")?.value.trim() || "",
         contactName: document.getElementById("supplierContactInput")?.value.trim() || "",
@@ -249,6 +268,10 @@ async function saveSupplier() {
         showToast(error.message || "Lưu nhà cung cấp thất bại", "error");
     }
 }
+
+const saveSupplier = submitSupplierForm;
+window.openSupplierModal = openSupplierModal;
+window.submitSupplierForm = submitSupplierForm;
 
 function openSupplierBalanceModal(item) {
     supplierBalanceAdjustId = item.supplierId ?? null;
