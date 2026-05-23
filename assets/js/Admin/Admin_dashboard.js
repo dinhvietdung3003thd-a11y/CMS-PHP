@@ -274,7 +274,10 @@ async function loadDashboardData() {
         const product = await productResponse.json();
         const detailedOrders = await Promise.all(
             orders.map(async (order) => {
-                const response = await apiFetch(`/Orders/${order.id}`);
+                const normalizedOrderId = order.orderId ?? order.id;
+                if (!normalizedOrderId) return order;
+
+                const response = await apiFetch(`/Orders/${normalizedOrderId}`);
                 if (!response.ok) return order;
                 return await response.json();
             })
@@ -352,7 +355,7 @@ function renderRecentOrders(orders) {
             <tbody>
                 ${latestOrders.map(order => `
                     <tr>
-                        <td>#${order.id}</td>
+                        <td>#${order.orderId ?? order.id ?? "-"}</td>
 
                         <td>
                             ${new Date(order.orderDate).toLocaleString("vi-VN")}
