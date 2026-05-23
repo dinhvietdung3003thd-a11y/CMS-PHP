@@ -251,7 +251,7 @@ async function saveSupplier() {
 }
 
 function openSupplierBalanceModal(item) {
-    supplierBalanceAdjustId = item.supplierId ?? item.id ?? null;
+    supplierBalanceAdjustId = item.supplierId ?? null;
 
     const title = document.getElementById("supplierBalanceModalTitle");
     if (title) {
