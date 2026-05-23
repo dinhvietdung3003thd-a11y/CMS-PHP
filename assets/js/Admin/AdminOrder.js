@@ -441,22 +441,7 @@ async function submitCreateOrder() {
 }
 
 function openCreateOrderModal() {
-    openModal("createOrderModal");
-    createOrderCart = [];
-    selectedCreateOrderTableId = null;
-    const tableSelect = document.getElementById("createOrderTableSelect");
-    if (tableSelect) tableSelect.value = "";
-    renderCreateOrderCart();
-    loadCreateOrderTables();
-    loadCreateOrderProducts().catch(async (errorResponse) => {
-        let message = "Không tải được thực đơn.";
-        if (errorResponse?.status === 401 || errorResponse?.status === 403) {
-            message = "Bạn không có quyền truy cập thực đơn.";
-        }
-        showToast(message, "error");
-        createOrderProducts = [];
-        renderCreateOrderProducts();
-    });
+    showToast("Chức năng Tạo đơn đang được cập nhật.", "warning");
 }
 
 window.closeCreateOrderModal = closeCreateOrderModal;
@@ -466,6 +451,7 @@ window.addProductToOrderCart = addProductToOrderCart;
 window.loadOrders = loadOrders;
 window.openSearchModal = openSearchModal;
 window.switchOrderTab = switchOrderTab;
+window.deleteSelectedOrders = deleteSelectedOrders;
 window.removeProductFromOrderCart = removeProductFromOrderCart;
 window.handleCreateOrderTableChange = handleCreateOrderTableChange;
 
