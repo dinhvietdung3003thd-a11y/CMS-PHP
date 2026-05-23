@@ -9,7 +9,7 @@ async function loadProducts(showToastOnSuccess = true) {
     container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...</div>';
 
     try {
-        const response = await apiFetch("/product");
+        const response = await apiFetch("/Product");
         if (!response.ok) throw new Error("Không tải được sản phẩm.");
 
         const data = await response.json();
@@ -92,7 +92,7 @@ async function addProduct() {
     };
 
     try {
-        const response = await apiFetch("/product", {
+        const response = await apiFetch("/Product", {
             method: "POST",
             body: JSON.stringify(payload)
         });
@@ -138,7 +138,7 @@ async function deleteProduct() {
     if (!confirmed) return;
 
     try {
-        const response = await apiFetch(`/product/${productId}`, {
+        const response = await apiFetch(`/Product/${productId}`, {
             method: "DELETE"
         });
 
