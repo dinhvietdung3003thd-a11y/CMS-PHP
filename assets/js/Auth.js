@@ -47,10 +47,9 @@ window.Auth = {
 
     getUsername() {
         const user = this.getUser();
-        return user?.user?.Username
-            || user?.user?.username
-            || user?.User?.Username
+        return user?.user?.username
             || user?.User?.username
+            || user?.username
             || "Unknown";
     },
 

@@ -22,20 +22,15 @@ async function loadSuppliersPage(showToastOnSuccess = true) {
     if (totalDebt) totalDebt.textContent = "0 ₫";
 
     try {
-        const [suppliersResponse, categoriesResponse] = await Promise.all([
-            apiFetch("/Supplier"),
-            apiFetch("/Categories")
-        ]);
+        const suppliersResponse = await apiFetch("/Supplier");
 
-        if (!suppliersResponse.ok || !categoriesResponse.ok) {
+        if (!suppliersResponse.ok) {
             throw new Error("Unable to load supplier data.");
         }
 
         suppliersData = await suppliersResponse.json();
-        const categories = await categoriesResponse.json();
-
         renderSuppliersTable(suppliersData);
-        populateSupplierCategoryFilter(categories);
+        populateSupplierCategoryFilter([]);
         updateSupplierSummary(suppliersData);
 
         if (showToastOnSuccess) {
@@ -226,8 +221,7 @@ async function saveSupplier() {
         contactName: document.getElementById("supplierContactInput")?.value.trim() || "",
         phone: document.getElementById("supplierPhoneInput")?.value.trim() || "",
         email: document.getElementById("supplierEmailInput")?.value.trim() || "",
-        address: document.getElementById("supplierAddressInput")?.value.trim() || "",
-        status: document.getElementById("supplierStatusInput")?.value || "Active"
+        address: document.getElementById("supplierAddressInput")?.value.trim() || ""
     };
 
     if (!payload.name || !payload.phone) {
@@ -260,7 +254,7 @@ async function saveSupplier() {
 }
 
 function openSupplierBalanceModal(item) {
-    supplierBalanceAdjustId = item.supplierId ?? item.id ?? null;
+    supplierBalanceAdjustId = item.supplierId ?? null;
 
     const title = document.getElementById("supplierBalanceModalTitle");
     if (title) {
@@ -280,19 +274,6 @@ function closeSupplierBalanceModal() {
 }
 
 async function saveSupplierBalanceAdjustment() {
-    if (!supplierBalanceAdjustId) {
-        showToast("Không xác định được nhà cung cấp", "error");
-        return;
-    }
-
-    const amount = Number(document.getElementById("supplierBalanceAmount")?.value || 0);
-    const note = document.getElementById("supplierBalanceNote")?.value.trim() || "";
-
-    if (!amount || amount <= 0) {
-        showToast("Vui lòng nhập số tiền hợp lệ", "error");
-        return;
-    }
-
-    showToast("Chức năng điều chỉnh balance đang để demo FE.", "success");
+    showToast("Backend không hỗ trợ điều chỉnh công nợ nhà cung cấp. Chức năng này đã bị vô hiệu hóa.", "warning");
     closeSupplierBalanceModal();
 }
