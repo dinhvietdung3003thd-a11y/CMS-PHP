@@ -2,6 +2,12 @@
 // - Tải danh sách đơn hàng và hiển thị theo tab
 // - Quản lý lựa chọn đơn hàng, xem chi tiết, xuất CSV
 // - Cung cấp chế độ đơn hàng active/history/online
+const createOrderState = {
+    products: [],
+    cart: [],
+    selectedTableId: null
+};
+
 async function loadOrders(showToastOnSuccess = true) {
     const container = document.getElementById("ordersTableContainer");
     if (!container) return;
@@ -267,32 +273,122 @@ function closeCreateOrderModal() {
     closeModal("createOrderModal");
 }
 
+async function loadCreateOrderProductsForModal() {
+    const productsContainer = document.getElementById("createOrderProductsList");
+    if (productsContainer) {
+        productsContainer.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Đang tải thực đơn...</div>';
+    }
+
+    try {
+        const response = await apiFetch("/Product");
+        if (!response.ok) {
+            const errorData = await parseJsonSafe(response);
+            throw new Error(errorData?.message || "Không tải được thực đơn");
+        }
+
+        const data = await response.json();
+        const products = Array.isArray(data) ? data : (data.data || data.items || data.result || []);
+        createOrderState.products = products.filter(product => product && product.isAvailable !== false);
+        renderCreateOrderProductsForModal();
+    } catch (error) {
+        console.error("Load create order products error:", error);
+        createOrderState.products = [];
+        if (productsContainer) {
+            productsContainer.innerHTML = '<div class="empty-state">Không tải được thực đơn.</div>';
+        }
+        showToast(error.message || "Không thể tải thực đơn", "error");
+    }
+}
+
+function renderCreateOrderProductsForModal() {
+    const container = document.getElementById("createOrderProductsList");
+    if (!container) return;
+
+    const products = createOrderState.products.filter(product => (product?.productId ?? product?.id) != null);
+    if (!products.length) {
+        container.innerHTML = '<div class="empty-state">Chưa có sản phẩm khả dụng.</div>';
+        return;
+    }
+
+    container.innerHTML = products.map(product => {
+        const productId = product.productId ?? product.id;
+        return `
+            <div class="product-item">
+                <div>
+                    <strong>${product.name ?? "Sản phẩm"}</strong>
+                    <div>${formatCurrency(Number(product.price || 0))}</div>
+                </div>
+                <button class="action-btn" type="button" onclick="addCreateOrderProductToCart(${Number(productId)})">Thêm</button>
+            </div>
+        `;
+    }).join("");
+}
+
+function addCreateOrderProductToCart(productId) {
+    const normalizedProductId = Number(productId);
+    if (!normalizedProductId || Number.isNaN(normalizedProductId)) return;
+
+    const product = createOrderState.products.find(item => Number(item.productId ?? item.id) === normalizedProductId);
+    if (!product) return;
+
+    const existingItem = createOrderState.cart.find(item => Number(item.productId) === normalizedProductId);
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        createOrderState.cart.push({
+            productId: normalizedProductId,
+            name: product.name,
+            price: Number(product.price || 0),
+            quantity: 1
+        });
+    }
+
+    renderCreateOrderCartForModal();
+}
+
+function renderCreateOrderCartForModal() {
+    const cartContainer = document.getElementById("createOrderCart");
+    const totalContainer = document.getElementById("createOrderTotal");
+    if (!cartContainer || !totalContainer) return;
+
+    if (!createOrderState.cart.length) {
+        cartContainer.innerHTML = '<div class="empty-state">Giỏ hàng đang trống.</div>';
+        totalContainer.textContent = formatCurrency(0);
+        return;
+    }
+
+    const total = createOrderState.cart.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+    cartContainer.innerHTML = createOrderState.cart.map(item => {
+        const subtotal = Number(item.price) * Number(item.quantity);
+        return `
+            <div class="cart-item">
+                <div><strong>${item.name}</strong></div>
+                <div>SL: ${item.quantity}</div>
+                <div>${formatCurrency(subtotal)}</div>
+            </div>
+        `;
+    }).join("");
+    totalContainer.textContent = formatCurrency(total);
+}
+
 async function submitCreateOrder() {
-    const customerRaw = prompt("Nhập customerId:", "");
-    if (customerRaw === null) return;
-    const productRaw = prompt("Nhập productId:", "");
-    if (productRaw === null) return;
-    const quantityRaw = prompt("Nhập quantity:", "1");
-    if (quantityRaw === null) return;
-    const tableRaw = prompt("Nhập tableId (để trống nếu không có):", "");
-    if (tableRaw === null) return;
-    const noteRaw = prompt("Nhập ghi chú (tùy chọn):", "") ?? "";
+    const details = createOrderState.cart
+        .map(item => ({
+            productId: Number(item.productId),
+            quantity: Number(item.quantity)
+        }))
+        .filter(item => item.productId && !Number.isNaN(item.productId) && item.quantity > 0 && !Number.isNaN(item.quantity));
 
-    const customerId = Number(customerRaw);
-    const productId = Number(productRaw);
-    const quantity = Number(quantityRaw);
-    const tableId = tableRaw.trim() ? Number(tableRaw) : null;
-
-    if (!customerId || Number.isNaN(customerId)) return showToast("customerId là bắt buộc", "error");
-    if (!productId || Number.isNaN(productId)) return showToast("productId là bắt buộc", "error");
-    if (!quantity || Number.isNaN(quantity) || quantity <= 0) return showToast("quantity phải lớn hơn 0", "error");
-    if (tableId !== null && Number.isNaN(tableId)) return showToast("tableId không hợp lệ", "error");
+    if (!details.length) {
+        showToast("Giỏ hàng trống hoặc dữ liệu sản phẩm không hợp lệ", "error");
+        return;
+    }
 
     const payload = {
-        customerId,
-        tableId,
-        note: String(noteRaw || ""),
-        details: [{ productId, quantity }]
+        customerId: null,
+        tableId: createOrderState.selectedTableId ? Number(createOrderState.selectedTableId) : null,
+        note: "",
+        details
     };
 
     try {
@@ -316,9 +412,20 @@ async function submitCreateOrder() {
 
 function openCreateOrderModal() {
     openModal("createOrderModal");
+    createOrderState.cart = [];
+    createOrderState.selectedTableId = document.getElementById("createOrderTableSelect")?.value || null;
+    renderCreateOrderCartForModal();
+    loadCreateOrderProductsForModal();
+}
+
+function handleCreateOrderTableChange(tableId) {
+    createOrderState.selectedTableId = tableId || null;
 }
 
 window.closeCreateOrderModal = closeCreateOrderModal;
+window.openCreateOrderModal = openCreateOrderModal;
+window.addCreateOrderProductToCart = addCreateOrderProductToCart;
+window.handleCreateOrderTableChange = handleCreateOrderTableChange;
 window.submitCreateOrder = submitCreateOrder;
 
 function loadSales() {
