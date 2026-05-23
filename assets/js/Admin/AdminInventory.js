@@ -216,15 +216,20 @@ function openInventoryTransactionModal(type) {
     if (noteInput) noteInput.value = "";
 
     if (select) {
-        if (!inventoryData.length) {
+        const inventorySource = Array.isArray(inventoryData) && inventoryData.length
+            ? inventoryData
+            : (Array.isArray(allInventoryItems) ? allInventoryItems : []);
+
+        if (!inventorySource.length) {
             showToast("Chưa có dữ liệu nguyên liệu trong kho.", "warning");
             return;
         }
+
         select.innerHTML = `
             <option value="">Chọn nguyên liệu</option>
-            ${inventoryData.map(item => `
-                <option value="${item.inventoryId ?? ""}">
-                    ${item.name ?? item.inventoryName ?? "-"}
+            ${inventorySource.map(item => `
+                <option value="${item.inventoryId ?? item.id ?? ""}">
+                    ${item.name ?? item.inventoryName ?? "-"}${item.unit ? ` (${item.unit})` : ""}
                 </option>
             `).join("")}
         `;
@@ -241,53 +246,70 @@ async function saveInventoryTransaction() {
     const type = document.getElementById("inventoryTransactionType")?.value || "";
     const itemId = document.getElementById("inventoryTransactionItem")?.value || "";
     const quantity = Number(document.getElementById("inventoryTransactionQuantity")?.value || 0);
+    const price = Number(document.getElementById("inventoryTransactionPrice")?.value || 0);
     const note = document.getElementById("inventoryTransactionNote")?.value.trim() || "";
 
-    if (!type || !itemId || quantity <= 0) {
-        showToast("Vui lòng nhập đầy đủ thông tin giao dịch kho", "error");
+    const inventorySource = Array.isArray(inventoryData) && inventoryData.length
+        ? inventoryData
+        : (Array.isArray(allInventoryItems) ? allInventoryItems : []);
+
+    if (!inventorySource.length) {
+        showToast("Chưa có dữ liệu nguyên liệu trong kho.", "warning");
         return;
     }
 
-    const matchedItem = inventoryData.find(item => String(item.inventoryId) === String(itemId));
-
-    if (!matchedItem) {
-        showToast("Không tìm thấy nguyên liệu", "error");
+    if (!itemId) {
+        showToast("Vui lòng chọn nguyên liệu.", "error");
         return;
     }
 
-    const currentQty = Number(matchedItem.quantityInStock ?? 0);
-    const newQty = type === "Import" ? currentQty + quantity : currentQty - quantity;
-
-    if (type === "Export" && newQty < 0) {
-        showToast("Số lượng xuất vượt quá tồn kho hiện tại", "error");
+    if (quantity <= 0) {
+        showToast("Số lượng phải lớn hơn 0.", "error");
         return;
     }
+
+    if (price < 0) {
+        showToast("Giá phải lớn hơn hoặc bằng 0.", "error");
+        return;
+    }
+
+    const transactionType = type === "Export" ? "Export" : "Import";
 
     const payload = {
         inventoryId: Number(itemId),
-        transactionType: type,
-        quantity,
-        price: Number(document.getElementById("inventoryTransactionPrice")?.value || 0),
-        note
+        transactionType,
+        quantity: Number(quantity),
+        price: Number(price || 0),
+        note: note || ""
     };
 
-    const response = await apiFetch('/InventoryTransaction', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-    });
+    try {
+        const response = await apiFetch("/InventoryTransaction", {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
 
-    if (!response.ok) {
-        const errorData = await parseJsonSafe(response);
-        throw new Error(errorData?.message || 'Không thể lưu giao dịch kho');
+        if (!response.ok) {
+            const errorData = await parseJsonSafe(response);
+            throw new Error(errorData?.message || "Không thể lưu giao dịch kho");
+        }
+
+        closeInventoryTransactionModal();
+        await loadInventoryPage(false);
+
+        if (typeof loadInventoryReport === "function") {
+            loadInventoryReport();
+        }
+
+        showToast(transactionType === "Import" ? "Stock in thành công" : "Stock out thành công", "success");
+    } catch (error) {
+        console.error("Save inventory transaction error:", error);
+        showToast(error.message || "Không thể lưu giao dịch kho", "error");
     }
-
-    await loadInventoryPage(false);
-    closeInventoryTransactionModal();
-
-    showToast(type === "Import" ? "Stock in thành công" : "Stock out thành công", "success");
 }
 
 window.submitInventoryTransaction = saveInventoryTransaction;
+window.openStockModal = openInventoryTransactionModal;
 
 function openInventoryHistoryModal() {
     const body = document.getElementById("inventoryHistoryBody");
